@@ -1,13 +1,24 @@
 #pragma once
-#include "../NCLGL/OGLRenderer.h"
+#include "../nclgl/OGLRenderer.h"
+#include "../nclgl/Camera.h"
+#include "../nclgl/SceneNode.h"
+#include "../nclgl/HeightMap.h"
 
 class Renderer : public OGLRenderer	{
 public:
 	Renderer(Window &parent);
 	 ~Renderer(void);
+
 	 void RenderScene()				override;
 	 void UpdateScene(float msec)	override;
+
 protected:
-	Mesh*	triangle;
-	Shader* basicShader;
+	void DrawNode(SceneNode* n);
+
+	SceneNode* root;
+	Camera* camera;
+	Shader* shader;
+	HeightMap* heightMap;
+	GLuint terrainTex;
+
 };

@@ -1,7 +1,7 @@
 #include "Renderer.h"
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {	// RENDERER CODE FROM T8 (TERRAIN)
-	heightMap = new HeightMap(TEXTUREDIR"TestHM.png");
+	heightMap = new HeightMap(TEXTUREDIR"/Coursework/TestHM.png");
 	camera = new Camera(-40, 270, Vector3());
 
 	Vector3 dimensions = heightMap->GetHeightmapSize();
@@ -11,7 +11,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {	// RENDERER CODE FROM
 
 	if (!shader->LoadSuccess()) return;
 
-	terrainTex = SOIL_load_OGL_texture(TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	terrainTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/soil_ground.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
 	if (!terrainTex) return;
 
@@ -30,6 +30,20 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {	// RENDERER CODE FROM
 	SceneNode* terrain = new SceneNode();
 	terrain->SetMesh(heightMap);
 	root->AddChild(terrain);
+
+
+	cubeMap = SOIL_load_OGL_cubemap(	// SKYBOX FUNCTIONALITY
+		TEXTUREDIR"rusted_west.jpg", TEXTUREDIR"rusted_east.jpg",
+		TEXTUREDIR"rusted_up.jpg", TEXTUREDIR"rusted_down.jpg",
+		TEXTUREDIR"rusted_south.jpg", TEXTUREDIR"rusted_north.jpg", SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
+
+	skyboxShader = new Shader("SkyboxVertex.glsl", "SkyboxFragment.glsl");
+	if (!skyboxShader->LoadSuccess()) return;
+
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
+	quad = Mesh::GenerateQuad();
+
 }
 
 Renderer::~Renderer(void) {
@@ -37,6 +51,9 @@ Renderer::~Renderer(void) {
 	delete shader;
 	delete camera;
 	delete heightMap;
+
+	delete quad;
+	delete skyboxShader;
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -47,6 +64,8 @@ void Renderer::UpdateScene(float dt) {
 
 void Renderer::RenderScene() {
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	DrawSkybox();
+
 
 	BindShader(shader);
 	UpdateShaderMatrices();
@@ -74,5 +93,15 @@ void Renderer::DrawNode(SceneNode* n) {
 	for (vector<SceneNode*>::const_iterator i = n->GetChildIteratorStart(); i != n->GetChildIteratorEnd(); ++i) {
 		DrawNode(*i);
 	}
+}
+
+void Renderer::DrawSkybox() {
+	glDepthMask(GL_FALSE);
+
+	BindShader(skyboxShader);
+	UpdateShaderMatrices();
+
+	quad->Draw();
+	glDepthMask(GL_TRUE);
 }
 

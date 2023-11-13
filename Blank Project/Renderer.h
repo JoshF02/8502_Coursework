@@ -21,4 +21,10 @@ protected:
 	HeightMap* heightMap;
 	GLuint terrainTex;
 
+	void DrawSkybox();
+
+	Shader* skyboxShader;
+	GLuint cubeMap;
+	Mesh* quad;
+
 };

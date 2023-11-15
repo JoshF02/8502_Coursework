@@ -55,15 +55,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
-	npc = Mesh::LoadFromMeshFile("Role_T.msh");
+	npc = Mesh::LoadFromMeshFile("Role_T.msh");	// ANIMATED CHARACTER
 	npcShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
 	anim = new MeshAnimation("Role_T.anm");
 	npcMat = new MeshMaterial("Role_T.mat");
 
 	for (int i = 0; i < npc->GetSubMeshCount(); ++i)
 	{
-		const MeshMaterialEntry* matEntry =
-			npcMat->GetMaterialForLayer(i);
+		const MeshMaterialEntry* matEntry = npcMat->GetMaterialForLayer(i);
 
 		const string* filename = nullptr;
 		matEntry->GetEntry("Diffuse", &filename);
@@ -86,31 +85,34 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root->AddChild(npcNode);
 
 
-	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");
-	//shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");
-	matShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
-	//texture = SOIL_load_OGL_texture(TEXTUREDIR"brick.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
-	//matShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
 
-	/*for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
+
+
+	matShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");	// STATIC MESHES
+	shipMesh = Mesh::LoadFromMeshFile("Role_T.msh");	
+	shipMat = new MeshMaterial("Role_T.mat");	// mat doesnt work for spaceship
+	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"brick.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
+
+	for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
 	{
-		const MeshMaterialEntry* matEntry =
-			shipMat->GetMaterialForLayer(i);
+		const MeshMaterialEntry* matEntry = shipMat->GetMaterialForLayer(i);
 
 		const string* filename = nullptr;
 		matEntry->GetEntry("Diffuse", &filename);
-		string path = TEXTUREDIR"/Coursework/" + *filename;
+		string path = TEXTUREDIR + *filename;
 		GLuint texID = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO,
 			SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
 		shipMatTextures.emplace_back(texID);
-	}*/
+	}
 
 	for (int i = 1; i < 4; ++i)
 	{
-		SceneNode* s = new SceneNode(shipMesh, Vector4(0, 1, 0, 1));
+		SceneNode* s = new SceneNode(shipMesh);
 		s->SetTransform(Matrix4::Translation(heightmapSize * Vector3(0.2f * i, 2.0f, 0.08f * i)));
 		s->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
 		s->SetBoundingRadius(50.0f);
+		s->SetTexture(shipTexture);
+		s->SetColour(Vector4(0, 1, 0, 1));	// colours the texture, can remove
 		root->AddChild(s);
 	}
 
@@ -192,59 +194,60 @@ void Renderer::DrawWater() {
 }
 
 void Renderer::DrawNode(SceneNode* n) {
-	if (n == npcNode)
+	if (n->GetMesh())
 	{
-		BindShader(npcShader);
-
-		glUniform1i(glGetUniformLocation(npcShader->GetProgram(), "diffuseTex"), 0);
-		UpdateShaderMatrices();
-
-		Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
-		glUniformMatrix4fv(glGetUniformLocation(npcShader->GetProgram(), "modelMatrix"), 1, false, model.values);
-		glUniform4fv(glGetUniformLocation(npcShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
-
-		glUniform3fv(glGetUniformLocation(npcShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
-
-		nodeTex = npcMatTextures[0];
-
-		glUniform1i(glGetUniformLocation(npcShader->GetProgram(), "useTexture"), nodeTex);
-
-		vector<Matrix4> frameMatrices;
-
-		const Matrix4* invBindPose = npc->GetInverseBindPose();
-		const Matrix4* frameData = anim->GetJointData(currentFrame);
-
-		for (unsigned int i = 0; i < npc->GetJointCount(); ++i)
+		if (n == npcNode)
 		{
-			frameMatrices.emplace_back(frameData[i] * invBindPose[i]);
+			BindShader(npcShader);
+
+			glUniform1i(glGetUniformLocation(npcShader->GetProgram(), "diffuseTex"), 0);
+			UpdateShaderMatrices();
+
+			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
+			glUniformMatrix4fv(glGetUniformLocation(npcShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+			glUniform4fv(glGetUniformLocation(npcShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+
+			glUniform3fv(glGetUniformLocation(npcShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+
+			nodeTex = npcMatTextures[0];
+
+			glUniform1i(glGetUniformLocation(npcShader->GetProgram(), "useTexture"), nodeTex);
+
+			vector<Matrix4> frameMatrices;
+
+			const Matrix4* invBindPose = npc->GetInverseBindPose();
+			const Matrix4* frameData = anim->GetJointData(currentFrame);
+
+			for (unsigned int i = 0; i < npc->GetJointCount(); ++i)
+			{
+				frameMatrices.emplace_back(frameData[i] * invBindPose[i]);
+			}
+
+			int j = glGetUniformLocation(npcShader->GetProgram(), "joints");
+			glUniformMatrix4fv(j, frameMatrices.size(), false,
+				(float*)frameMatrices.data());
+
+			for (int i = 0; i < npc->GetSubMeshCount(); ++i)
+			{
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, npcMatTextures[i]);
+				npc->DrawSubMesh(i);
+			}
 		}
-
-		int j = glGetUniformLocation(npcShader->GetProgram(), "joints");
-		glUniformMatrix4fv(j, frameMatrices.size(), false,
-			(float*)frameMatrices.data());
-
-		for (int i = 0; i < npc->GetSubMeshCount(); ++i)
+		else if (n == terrain)
 		{
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, npcMatTextures[i]);
-			npc->DrawSubMesh(i);
-		}
-	}
-	else if (n == terrain) 
-	{
-		BindShader(lightShader);
-		SetShaderLight(*light);
-		glUniform3fv(glGetUniformLocation(lightShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+			BindShader(lightShader);
+			SetShaderLight(*light);
+			glUniform3fv(glGetUniformLocation(lightShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-		SetTexture(earthTex, 0, "diffuseTex", lightShader, GL_TEXTURE_2D);
-		SetTexture(earthBump, 1, "bumpTex", lightShader, GL_TEXTURE_2D);
+			SetTexture(earthTex, 0, "diffuseTex", lightShader, GL_TEXTURE_2D);
+			SetTexture(earthBump, 1, "bumpTex", lightShader, GL_TEXTURE_2D);
 
-		modelMatrix.ToIdentity();
-		textureMatrix.ToIdentity();
+			modelMatrix.ToIdentity();
+			textureMatrix.ToIdentity();
 
-		UpdateShaderMatrices();
+			UpdateShaderMatrices();
 
-		if (n->GetMesh()) {
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			glUniformMatrix4fv(glGetUniformLocation(lightShader->GetProgram(), "modelMatrix"), 1, false, model.values);
 
@@ -254,37 +257,27 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			n->Draw(*this);
 		}
-	}
-	else
-	{
-		BindShader(matShader);
-		//SetTexture(texture, 0, "diffuseTex", matShader, GL_TEXTURE_2D);
-		UpdateShaderMatrices();
-		if (n->GetMesh()) {
+		else
+		{
+			BindShader(matShader);
+			//SetTexture(n->GetTexture(), 0, "diffuseTex", matShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
+			UpdateShaderMatrices();
+
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			glUniformMatrix4fv(glGetUniformLocation(matShader->GetProgram(), "modelMatrix"), 1, false, model.values);
-
 			glUniform4fv(glGetUniformLocation(matShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
 
-			//texture = n->GetTexture();
-			//glActiveTexture(GL_TEXTURE0);
-			//glBindTexture(GL_TEXTURE_2D, texture);
-			//glUniform1i(glGetUniformLocation(textureShader->GetProgram(), "useTexture"), texture);
+			glUniform3fv(glGetUniformLocation(matShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-			n->Draw(*this);
+			nodeTex = n->GetTexture();
+			glUniform1i(glGetUniformLocation(matShader->GetProgram(), "useTexture"), nodeTex);
 
-			/*glUniform3fv(glGetUniformLocation(crystalShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
-
-			nodeTex = crystalMatTextures[0];
-
-			glUniform1i(glGetUniformLocation(crystalShader->GetProgram(), "useTexture"), nodeTex);
-
-			for (int i = 0; i < crystal->GetSubMeshCount(); ++i)
+			for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)	// for simple mesh instead use n->Draw(*this); 
 			{
 				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, crystalMatTextures[i]);
-				crystal->DrawSubMesh(i);
-			}*/
+				glBindTexture(GL_TEXTURE_2D, shipMatTextures[i]);
+				shipMesh->DrawSubMesh(i);
+			}
 		}
 	}
 

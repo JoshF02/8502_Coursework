@@ -57,6 +57,7 @@ protected:
 
 	Shader* matShader;
 	Mesh* shipMesh;
-	GLuint texture;	// remove once i get mat working
+	GLuint shipTexture;	// remove once i get mat working
 	MeshMaterial* shipMat;
+	vector<GLuint> shipMatTextures;
 };

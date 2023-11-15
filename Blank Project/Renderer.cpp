@@ -8,16 +8,16 @@
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	quad = Mesh::GenerateQuad();
 
-	heightMap = new HeightMap(TEXTUREDIR"noise.png"); //TEXTUREDIR"/Coursework/TestHM.png");
+	heightMap = new HeightMap(TEXTUREDIR"/Coursework/TestHM2.png");
 
 	waterTex = SOIL_load_OGL_texture(TEXTUREDIR"water.TGA", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	earthTex = SOIL_load_OGL_texture(TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);	// TEXTUREDIR"/Coursework/soil_ground.JPG"
-	earthBump = SOIL_load_OGL_texture(TEXTUREDIR"Barren RedsDOT3.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	earthTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/rock_boulder_dry_diff_1k.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	earthBump = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/rock_boulder_dry_nor_gl_1k.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
 	cubeMap = SOIL_load_OGL_cubemap(
-		TEXTUREDIR"rusted_west.jpg", TEXTUREDIR"rusted_east.jpg",
-		TEXTUREDIR"rusted_up.jpg", TEXTUREDIR"rusted_down.jpg",
-		TEXTUREDIR"rusted_south.jpg", TEXTUREDIR"rusted_north.jpg", SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
+		TEXTUREDIR"/Coursework/sb_right.png", TEXTUREDIR"/Coursework/sb_left.png",
+		TEXTUREDIR"/Coursework/sb_top.png", TEXTUREDIR"/Coursework/sb_bot.png",
+		TEXTUREDIR"/Coursework/sb_front.png", TEXTUREDIR"/Coursework/sb_back.png", SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
 
 	if (!earthTex || !earthBump || !cubeMap || !waterTex) return;
 
@@ -25,7 +25,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(earthBump, true);
 	SetTextureRepeating(waterTex, true);
 
-	reflectShader = new Shader("ReflectVertex.glsl", "ReflectFragment.glsl");
+	reflectShader = new Shader("ReflectVertex.glsl", "/Coursework/CWReflectFragment.glsl");
 	skyboxShader = new Shader("SkyboxVertex.glsl", "SkyboxFragment.glsl");
 	lightShader = new Shader("BumpVertex.glsl", "BumpFragment.glsl");
 

@@ -41,23 +41,22 @@ protected:
 	void DrawNode(SceneNode* n);
 
 	SceneNode* root;
+	SceneNode* terrain;
 
 	bool SetTexture(GLuint texID, GLuint unit, const std::string& uniformName, Shader* s, GLenum target);
 
-	Shader* skinningShader;
-	Mesh* ship;
-	MeshMaterial* shipMaterial;
-	MeshAnimation* shipAnim;
-	vector<GLuint> shipMatTextures;
-
+	SceneNode* npcNode;
+	Mesh* npc;
+	Shader* npcShader;
+	MeshAnimation* anim;
+	MeshMaterial* npcMat;
+	vector<GLuint> npcMatTextures;
 	int currentFrame;
 	float frameTime;
+	GLuint nodeTex;
 
-	void RenderSkinnedMesh();
-
-	SceneNode* shipNode;
-	GLuint testTex;
-
-	Shader* sceneShader;
-	SceneNode* terrain;
+	Shader* matShader;
+	Mesh* shipMesh;
+	GLuint texture;	// remove once i get mat working
+	MeshMaterial* shipMat;
 };

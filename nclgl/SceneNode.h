@@ -4,9 +4,11 @@
 #include "Vector4.h"
 #include "Mesh.h"
 #include <vector>
+#include"MeshAnimation.h"
+#include"MeshMaterial.h"
 
-class SceneNode
-{
+
+class SceneNode {
 public:
 	SceneNode(Mesh* m = NULL, Vector4 colour = Vector4(1, 1, 1, 1));
 	~SceneNode(void);
@@ -24,26 +26,44 @@ public:
 	Mesh* GetMesh() const { return mesh; }
 	void SetMesh(Mesh* m) { mesh = m; }
 
+	void AddChild(SceneNode* s);
+
+	virtual void Update(float dt);
+	virtual void Draw(const OGLRenderer& r);
+
+	std::vector <SceneNode*>::const_iterator GetChildIteratorStart() {
+		return children.begin();
+	}
+
+	std::vector <SceneNode*>::const_iterator GetChildIteratorEnd() {
+		return children.end();
+	}
+
 	float GetBoundingRadius() const { return boundingRadius; }
 	void SetBoundingRadius(float f) { boundingRadius = f; }
 
 	float GetCameraDistance() const { return distanceFromCamera; }
 	void SetCameraDistance(float f) { distanceFromCamera = f; }
 
-	GLuint GetTexture() const { return texture; }
 	void SetTexture(GLuint tex) { texture = tex; }
-
-	void AddChild(SceneNode* n);
-
-	virtual void Update(float dt);
-	virtual void Draw(const OGLRenderer& r);
-
-	std::vector<SceneNode*>::const_iterator GetChildIteratorStart() { return children.begin(); }
-	std::vector<SceneNode*>::const_iterator GetChildIteratorEnd() { return children.end(); }
+	GLuint GetTexture() const { return texture; }
 
 	static bool CompareByCameraDistance(SceneNode* a, SceneNode* b) {
 		return (a->distanceFromCamera < b->distanceFromCamera) ? true : false;
+
 	}
+
+	void SetAniTexture(vector<GLuint> tex) { matTextures = tex; }
+	vector<GLuint> GetAniTexture() const { return matTextures; }
+
+	int GetCurrentFrame() const { return currentFrame; }
+	void SetCurrentFrame(int c) { currentFrame = c; }
+
+	float GetframTime() const { return frameTime; }
+	void SetframeTime(float c) { frameTime = c; }
+
+	MeshAnimation* GetAnimation() const { return anim; }
+	void SetAnimation(MeshAnimation* anim) { anim = anim; }
 
 protected:
 	SceneNode* parent;
@@ -52,9 +72,17 @@ protected:
 	Matrix4 transform;
 	Vector3 modelScale;
 	Vector4 colour;
-	std::vector<SceneNode*> children;
+	std::vector <SceneNode*> children;
+
 	float distanceFromCamera;
 	float boundingRadius;
 	GLuint texture;
+
+	MeshAnimation* anim;
+	//MeshMaterial* material;
+	vector <GLuint > matTextures;
+	Shader* shader;
+	int currentFrame;
+	float frameTime;
 };
 

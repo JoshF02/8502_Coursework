@@ -1,30 +1,42 @@
 #pragma once
 #include "../nclgl/OGLRenderer.h"
-#include "../nclgl/Camera.h"
-#include "../nclgl/SceneNode.h"
-#include "../nclgl/HeightMap.h"
 
-class Renderer : public OGLRenderer	{
+class Camera;
+class Shader;
+class HeightMap;
+class SceneNode;
+
+class Renderer : public OGLRenderer {
 public:
-	Renderer(Window &parent);
-	 ~Renderer(void);
-
-	 void RenderScene()				override;
-	 void UpdateScene(float msec)	override;
+	Renderer(Window& parent);
+	~Renderer(void);
+	void RenderScene() override;
+	void UpdateScene(float dt) override;
 
 protected:
+	void DrawHeightmap();
+	void DrawWater();
+	void DrawSkybox();
+
+	Shader* lightShader;
+	Shader* reflectShader;
+	Shader* skyboxShader;
+
+	HeightMap* heightMap;
+	Mesh* quad;
+
+	Light* light;
+	Camera* camera;
+
+	GLuint cubeMap;
+	GLuint waterTex;
+	GLuint earthTex;
+	GLuint earthBump;
+
+	float waterRotate;
+	float waterCycle;
+
 	void DrawNode(SceneNode* n);
 
 	SceneNode* root;
-	Camera* camera;
-	Shader* shader;
-	HeightMap* heightMap;
-	GLuint terrainTex;
-
-	void DrawSkybox();
-
-	Shader* skyboxShader;
-	GLuint cubeMap;
-	Mesh* quad;
-
 };

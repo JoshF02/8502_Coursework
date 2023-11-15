@@ -5,6 +5,8 @@ class Camera;
 class Shader;
 class HeightMap;
 class SceneNode;
+class MeshMaterial;
+class MeshAnimation;
 
 class Renderer : public OGLRenderer {
 public:
@@ -41,4 +43,21 @@ protected:
 	SceneNode* root;
 
 	bool SetTexture(GLuint texID, GLuint unit, const std::string& uniformName, Shader* s, GLenum target);
+
+	Shader* skinningShader;
+	Mesh* ship;
+	MeshMaterial* shipMaterial;
+	MeshAnimation* shipAnim;
+	vector<GLuint> shipMatTextures;
+
+	int currentFrame;
+	float frameTime;
+
+	void RenderSkinnedMesh();
+
+	SceneNode* shipNode;
+	GLuint testTex;
+
+	Shader* sceneShader;
+	SceneNode* terrain;
 };

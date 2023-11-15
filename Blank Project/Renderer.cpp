@@ -4,6 +4,8 @@
 #include "../nclgl/Shader.h"
 #include "../nclgl/Camera.h"
 #include "../nclgl/SceneNode.h"
+#include "../nclgl/MeshMaterial.h"
+#include "../nclgl/MeshAnimation.h"
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	quad = Mesh::GenerateQuad();
@@ -47,9 +49,61 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 	root = new SceneNode();	// SCENE GRAPH FUNCTIONALITY
-	SceneNode* terrain = new SceneNode();
+	terrain = new SceneNode();
 	terrain->SetMesh(heightMap);
 	root->AddChild(terrain);
+
+
+	//glEnable(GL_CULL_FACE);
+	skinningShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
+	if (!skinningShader->LoadSuccess()) return;
+
+	//ship = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");
+	//shipMaterial = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");
+	/*ship = Mesh::LoadFromMeshFile("Role_T.msh");
+	shipAnim = new MeshAnimation("Role_T.anm");
+	shipMaterial = new MeshMaterial("Role_T.mat");
+
+	for (int i = 0; i < ship->GetSubMeshCount(); ++i) {
+		const MeshMaterialEntry* matEntry = shipMaterial->GetMaterialForLayer(i);
+
+		const string* filename = nullptr;
+		matEntry->GetEntry("Diffuse", &filename);
+		string path = TEXTUREDIR + *filename;
+		GLuint texID = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
+		shipMatTextures.emplace_back(texID);
+	}
+
+	currentFrame = 0;
+	frameTime = 0.0f;*/
+
+	/*SceneNode* shipNode = new SceneNode();
+	shipNode->SetColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+	shipNode->SetTransform(Matrix4::Translation(Vector3(10.0f, 10.0f, 10.0f)));
+	shipNode->SetModelScale(Vector3(10.0f, 10.0f, 10.0f));
+	shipNode->SetBoundingRadius(100.0f);
+	shipNode->SetMesh(ship);
+	shipNode->SetTexture(earthTex);
+	//root->AddChild(shipNode);*/
+
+	sceneShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
+
+	ship = Mesh::LoadFromMeshFile("SP_Crystal01.msh");
+
+	testTex = SOIL_load_OGL_texture(
+		TEXTUREDIR"diffuse.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	SetTextureRepeating(testTex, true);
+
+	for (int i = 1; i < 4; ++i)
+	{
+		SceneNode* s = new SceneNode();
+		s->SetColour(Vector4(1.0f, 3.0f, 5.0f, 1.0f));
+		s->SetTransform(Matrix4::Translation(heightmapSize * Vector3(0.4f * i, 0.5f, 0.3f * i)));
+		s->SetModelScale(Vector3(200.0f, 200.0f, 200.0f));
+		s->SetMesh(ship);
+		s->SetTexture(testTex);
+		root->AddChild(s);
+	}
 
 	init = true;
 }
@@ -63,6 +117,11 @@ Renderer::~Renderer(void) {
 	delete lightShader;
 	delete light;
 	delete root;
+
+	delete skinningShader;
+	delete ship;
+	delete shipMaterial;
+	delete shipAnim;
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -72,6 +131,12 @@ void Renderer::UpdateScene(float dt) {
 	waterCycle += dt * 0.25f;
 
 	root->Update(dt);
+
+	/*frameTime -= dt;
+	while (frameTime < 0.0f) {
+		currentFrame = (currentFrame + 1) % shipAnim->GetFrameCount();
+		frameTime += 1.0f / shipAnim->GetFrameRate();
+	}*/
 }
 
 void Renderer::RenderScene() {
@@ -79,6 +144,8 @@ void Renderer::RenderScene() {
 	DrawSkybox();
 	DrawNode(root);	//DrawHeightmap();
 	DrawWater();
+	//DrawNode(shipNode);
+	//RenderSkinnedMesh();
 }
 
 void Renderer::DrawSkybox() {
@@ -110,25 +177,47 @@ void Renderer::DrawWater() {
 }
 
 void Renderer::DrawNode(SceneNode* n) {
-	BindShader(lightShader);
-	SetShaderLight(*light);
-	glUniform3fv(glGetUniformLocation(lightShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+	if (n == terrain) {
+		BindShader(lightShader);
+		SetShaderLight(*light);
+		glUniform3fv(glGetUniformLocation(lightShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-	SetTexture(earthTex, 0, "diffuseTex", lightShader, GL_TEXTURE_2D);
-	SetTexture(earthBump, 1, "bumpTex", lightShader, GL_TEXTURE_2D);
+		SetTexture(earthTex, 0, "diffuseTex", lightShader, GL_TEXTURE_2D);
+		SetTexture(earthBump, 1, "bumpTex", lightShader, GL_TEXTURE_2D);
 
-	modelMatrix.ToIdentity();
-	textureMatrix.ToIdentity();
+		modelMatrix.ToIdentity();
+		textureMatrix.ToIdentity();
 
-	UpdateShaderMatrices();
+		UpdateShaderMatrices();
 
-	if (n->GetMesh()) {
+		if (n->GetMesh()) {
+			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
+			glUniformMatrix4fv(glGetUniformLocation(lightShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+
+			glUniform4fv(glGetUniformLocation(lightShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+
+			glUniform1i(glGetUniformLocation(lightShader->GetProgram(), "useTexture"), 0);
+
+			n->Draw(*this);
+		}
+	}
+	else {
+		BindShader(sceneShader);
+
+		glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "diffuseTex"), 0);
+		UpdateShaderMatrices();
+
 		Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
-		glUniformMatrix4fv(glGetUniformLocation(lightShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+		glUniformMatrix4fv(glGetUniformLocation(sceneShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+		glUniform4fv(glGetUniformLocation(sceneShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
 
-		glUniform4fv(glGetUniformLocation(lightShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+		glUniform3fv(glGetUniformLocation(sceneShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-		glUniform1i(glGetUniformLocation(lightShader->GetProgram(), "useTexture"), 0);
+		testTex = n->GetTexture();
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, testTex);
+
+		glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "useTexture"), testTex);
 
 		n->Draw(*this);
 	}
@@ -158,3 +247,31 @@ bool Renderer::SetTexture(GLuint texID, GLuint unit, const std::string& uniformN
 	return true;
 }
 
+void Renderer::RenderSkinnedMesh() {
+	BindShader(skinningShader);
+	glUniform1i(glGetUniformLocation(skinningShader->GetProgram(), "diffuseTex"), 0);
+
+	//Matrix4 testModelMatrix = Matrix4::Scale(Vector3(10.0f, 10.0f, 10.0f));
+
+	UpdateShaderMatrices();
+
+	//glUniformMatrix4fv(glGetUniformLocation(skinningShader->GetProgram(), "modelMatrix"), 1, false, testModelMatrix.values);
+
+	vector<Matrix4> frameMatrices;
+
+	const Matrix4* invBindPose = ship->GetInverseBindPose();
+	const Matrix4* frameData = shipAnim->GetJointData(currentFrame);
+
+	for (unsigned int i = 0; i < ship->GetJointCount(); ++i) {
+		frameMatrices.emplace_back(frameData[i] * invBindPose[i]);
+	}
+
+	int j = glGetUniformLocation(skinningShader->GetProgram(), "joints");
+	glUniformMatrix4fv(j, frameMatrices.size(), false, (float*)frameMatrices.data());
+
+	for (int i = 0; i < ship->GetSubMeshCount(); ++i) {
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, shipMatTextures[i]);
+		ship->DrawSubMesh(i);
+	}
+}

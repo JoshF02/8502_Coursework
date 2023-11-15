@@ -39,4 +39,6 @@ protected:
 	void DrawNode(SceneNode* n);
 
 	SceneNode* root;
+
+	bool SetTexture(GLuint texID, GLuint unit, const std::string& uniformName, Shader* s, GLenum target);
 };

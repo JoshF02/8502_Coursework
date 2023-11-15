@@ -11,7 +11,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	heightMap = new HeightMap(TEXTUREDIR"noise.png"); //TEXTUREDIR"/Coursework/TestHM.png");
 
 	waterTex = SOIL_load_OGL_texture(TEXTUREDIR"water.TGA", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	earthTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/soil_ground.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);	// terrain texture
+	earthTex = SOIL_load_OGL_texture(TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);	// TEXTUREDIR"/Coursework/soil_ground.JPG"
 	earthBump = SOIL_load_OGL_texture(TEXTUREDIR"Barren RedsDOT3.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
 	cubeMap = SOIL_load_OGL_cubemap(
@@ -27,7 +27,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	reflectShader = new Shader("ReflectVertex.glsl", "ReflectFragment.glsl");
 	skyboxShader = new Shader("SkyboxVertex.glsl", "SkyboxFragment.glsl");
-	lightShader = new Shader("PerPixelVertex.glsl", "PerPixelFragment.glsl");
+	lightShader = new Shader("BumpVertex.glsl", "BumpFragment.glsl");
 
 	if (!reflectShader->LoadSuccess() || !skyboxShader->LoadSuccess() || !lightShader->LoadSuccess()) return;
 
@@ -96,14 +96,8 @@ void Renderer::DrawWater() {
 
 	glUniform3fv(glGetUniformLocation(reflectShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-	glUniform1i(glGetUniformLocation(reflectShader->GetProgram(), "diffuseTex"), 0);
-	glUniform1i(glGetUniformLocation(reflectShader->GetProgram(), "cubeTex"), 2);
-
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, waterTex);
-
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+	SetTexture(waterTex, 0, "diffuseTex", reflectShader, GL_TEXTURE_2D);
+	SetTexture(cubeMap, 2, "cubeTex", reflectShader, GL_TEXTURE_CUBE_MAP);
 
 	Vector3 hSize = heightMap->GetHeightmapSize();
 
@@ -120,13 +114,8 @@ void Renderer::DrawNode(SceneNode* n) {
 	SetShaderLight(*light);
 	glUniform3fv(glGetUniformLocation(lightShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-	glUniform1i(glGetUniformLocation(lightShader->GetProgram(), "diffuseTex"), 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, earthTex);
-
-	glUniform1i(glGetUniformLocation(lightShader->GetProgram(), "bumpTex"), 1);
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, earthBump);
+	SetTexture(earthTex, 0, "diffuseTex", lightShader, GL_TEXTURE_2D);
+	SetTexture(earthBump, 1, "bumpTex", lightShader, GL_TEXTURE_2D);
 
 	modelMatrix.ToIdentity();
 	textureMatrix.ToIdentity();
@@ -147,5 +136,25 @@ void Renderer::DrawNode(SceneNode* n) {
 	for (vector<SceneNode*>::const_iterator i = n->GetChildIteratorStart(); i != n->GetChildIteratorEnd(); ++i) {
 		DrawNode(*i);
 	}
+}
+
+bool Renderer::SetTexture(GLuint texID, GLuint unit, const std::string& uniformName, Shader* s, GLenum target) {	// target is type of texture e.g. GL_TEXTURE_2D
+	GLint uniformID = glGetUniformLocation(s->GetProgram(), uniformName.c_str());
+	if (uniformID < 0) {
+		std::cout << "Trying to bind invalid 2D texture uniform!\n";
+		return false;
+	}
+
+	if (currentShader != s) {
+		std::cout << "Trying to set shader uniform on wrong shader!\n";
+		return false;
+	}
+
+	glActiveTexture(GL_TEXTURE0 + unit);
+	glBindTexture(target, texID);
+
+	glUniform1i(uniformID, unit);
+
+	return true;
 }
 

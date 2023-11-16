@@ -36,7 +36,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	Vector3 heightmapSize = heightMap->GetHeightmapSize();
 
 	camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f), heightmapSize);
-	light = new Light(heightmapSize * Vector3(0.5f, 1.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x);
+	light = new Light(heightmapSize * Vector3(0.5f, 1.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x);	// POINT LIGHT
 
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f, (float)width / (float)height, 45.0f);
 
@@ -55,10 +55,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
-	npc = Mesh::LoadFromMeshFile("/Coursework/spider.msh");	// ANIMATED CHARACTER
+	npc = Mesh::LoadFromMeshFile("/Coursework/Monster_Crab.msh");	// ANIMATED CHARACTER
 	npcShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
-	anim = new MeshAnimation("/Coursework/spider.anm");
-	npcMat = new MeshMaterial("/Coursework/spider.mat");
+	anim = new MeshAnimation("/Coursework/Monster_Crab.anm");
+	npcMat = new MeshMaterial("/Coursework/Monster_Crab.mat");
 
 	for (int i = 0; i < npc->GetSubMeshCount(); ++i)
 	{
@@ -90,7 +90,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	matShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");	// STATIC MESHES
 	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");	
-	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");	// mat doesnt work for spaceship
+	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");	// change to w/interio for submission, but loads slow
 	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"brick.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
 	for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
@@ -236,6 +236,9 @@ void Renderer::DrawNode(SceneNode* n) {
 		}
 		else if (n == terrain)
 		{
+			//FADE LIGHT COLOUR TO RED OVER TIME
+			//light->SetColour(Vector4(light->GetColour().x, light->GetColour().y - 0.0001, light->GetColour().z - 0.0001, light->GetColour().w));
+
 			BindShader(lightShader);
 			SetShaderLight(*light);
 			glUniform3fv(glGetUniformLocation(lightShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());

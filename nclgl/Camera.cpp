@@ -24,24 +24,79 @@ void Camera::UpdateCamera(float dt)
 
 	float timeSpeed = speed * dt;
 
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_W)) {
-		position += forward * timeSpeed;
+	if (automated) {
+		if (zneg) {
+			position += Vector3(0, 0, -1) * timeSpeed;
+			if (position.z < 0) {
+				position.z += 10.0f;
+				xneg = true;
+				zneg = false;
+			}
+		}
+		if (zpos) {
+			position += Vector3(0, 0, 1) * timeSpeed;
+			if (position.z > heightmapSize.z) {
+				position.z -= 10.0f;
+				xpos = true;
+				zpos = false;
+			}
+		}
+		if (xneg) {
+			position += Vector3(-1, 0, 0) * timeSpeed;
+			if (position.x < 0) {
+				position.x += 10.0f;
+				zpos = true;
+				xneg = false;
+			}
+		}
+		if (xpos) {
+			position += Vector3(1, 0, 0) * timeSpeed;
+			if (position.x > heightmapSize.x) {
+				position.x -= 10.0f;
+				zneg = true;
+				xpos = false;
+			}
+		}
+		yaw += 0.1;
 	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_S)) {
-		position -= forward * timeSpeed;
-	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_A)) {
-		position -= right * timeSpeed;
-	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_D)) {
-		position += right * timeSpeed;
+	else {
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_W)) {
+			position += forward * timeSpeed;
+		}
+
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_S)) {
+			position -= forward * timeSpeed;
+		}
+
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_A)) {
+			position -= right * timeSpeed;
+		}
+
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_D)) {
+			position += right * timeSpeed;
+		}
+
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_SHIFT)) {
+			position.y += timeSpeed;
+		}
+
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_SPACE)) {
+			position.y -= timeSpeed;
+		}
 	}
 
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_SHIFT)) {
-		position.y += timeSpeed;
+	if (Window::GetKeyboard()->KeyDown(KEYBOARD_C)) {
+		automated = true;
+		position = heightmapSize * Vector3(1.0f, 5.0f, 1.0f);
+		yaw = 0;
+		pitch = -20;
+		zneg = true;
+		zpos = false;
+		xpos = false;
+		xneg = false;
 	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_SPACE)) {
-		position.y -= timeSpeed;
+	if (Window::GetKeyboard()->KeyDown(KEYBOARD_V)) {
+		automated = false;
 	}
 }
 

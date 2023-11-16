@@ -8,14 +8,26 @@ public:
 	Camera(void) {
 		yaw = 0.0f;
 		pitch = 0.0f;
-		speed = 30.0f;
+		speed = 2000.0f;
+		position = heightmapSize * Vector3(1.0f, 2.0f, 1.0f);
+		automated = false;
+		zneg = false;
+		zpos = false;
+		xneg = false;
+		xpos = false;
 	};
 
-	Camera(float pitch, float yaw, Vector3 position) {
+	Camera(float pitch, float yaw, Vector3 position, Vector3 heightmapSize = Vector3(0,0,0)) {
 		this->pitch = pitch;
 		this->yaw = yaw;
 		this->position = position;
-		speed = 200.0f;
+		this->heightmapSize = heightmapSize;
+		speed = 2000.0f;
+		automated = false;
+		zneg = false;
+		zpos = false;
+		xneg = false;
+		xpos = false;
 	}
 
 	~Camera(void) {};
@@ -40,5 +52,11 @@ protected:
 	float pitch;
 	float speed;
 	Vector3 position;
+	Vector3 heightmapSize;
+	bool automated;
+	bool zneg;
+	bool zpos;
+	bool xneg;
+	bool xpos;
 };
 

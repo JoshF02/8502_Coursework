@@ -55,10 +55,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
-	npc = Mesh::LoadFromMeshFile("Role_T.msh");	// ANIMATED CHARACTER
+	npc = Mesh::LoadFromMeshFile("/Coursework/spider.msh");	// ANIMATED CHARACTER
 	npcShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
-	anim = new MeshAnimation("Role_T.anm");
-	npcMat = new MeshMaterial("Role_T.mat");
+	anim = new MeshAnimation("/Coursework/spider.anm");
+	npcMat = new MeshMaterial("/Coursework/spider.mat");
 
 	for (int i = 0; i < npc->GetSubMeshCount(); ++i)
 	{
@@ -89,8 +89,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 	matShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");	// STATIC MESHES
-	shipMesh = Mesh::LoadFromMeshFile("Role_T.msh");	
-	shipMat = new MeshMaterial("Role_T.mat");	// mat doesnt work for spaceship
+	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");	
+	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");	// mat doesnt work for spaceship
 	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"brick.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
 	for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
@@ -112,7 +112,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		s->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
 		s->SetBoundingRadius(50.0f);
 		s->SetTexture(shipTexture);
-		s->SetColour(Vector4(0, 1, 0, 1));	// colours the texture, can remove
+		//s->SetColour(Vector4(0, 1, 0, 1));	// colours the texture, can remove
 		root->AddChild(s);
 	}
 

@@ -8,6 +8,7 @@
 #include "../nclgl/MeshAnimation.h"
 
 const int POST_PASSES = 10;
+#define SHADOWSIZE 2048
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	quad = Mesh::GenerateQuad();
@@ -35,10 +36,12 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	if (!reflectShader->LoadSuccess() || !skyboxShader->LoadSuccess() || !lightShader->LoadSuccess()) return;
 
-	Vector3 heightmapSize = heightMap->GetHeightmapSize();
+	heightmapSize = heightMap->GetHeightmapSize();
 
 	camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f), heightmapSize);
-	light = new Light(heightmapSize * Vector3(0.5f, 1.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x);	// POINT LIGHT
+	//camera = new Camera(-30.0f, 315.0f, Vector3(-8.0f, 5.0f, 8.0f));
+	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 2);	// POINT LIGHT
+	//light = new Light(Vector3(-20.0f, 30.0f, -20.0f), Vector4(1, 1, 1, 1), 250.0f);
 
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f, (float)width / (float)height, 45.0f);
 
@@ -121,10 +124,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
-	processQuad = Mesh::GenerateQuad();
+	processQuad = Mesh::GenerateQuad();	// POST PROCESSING
 	processShader = new Shader("TexturedVertex.glsl", "ProcessFrag.glsl");
-	sceneShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
-	if (!processShader->LoadSuccess() || !sceneShader->LoadSuccess()) {
+	processSceneShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
+	if (!processShader->LoadSuccess() || !processSceneShader->LoadSuccess()) {
 		return;
 	}
 
@@ -161,6 +164,59 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	postEnabled = false;
+
+
+
+
+
+	shadowSceneShader = new Shader("ShadowSceneVert.glsl", "ShadowSceneFrag.glsl");	// SHADOWS
+	shadowShader = new Shader("ShadowVert.glsl", "ShadowFrag.glsl");
+	if (!shadowSceneShader->LoadSuccess() || !shadowShader->LoadSuccess()) return;
+
+	glGenTextures(1, &shadowTex);
+	glBindTexture(GL_TEXTURE_2D, shadowTex);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOWSIZE, SHADOWSIZE, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glGenFramebuffers(1, &shadowFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowTex, 0);
+	glDrawBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	sceneMeshes.emplace_back(Mesh::GenerateQuad());
+	sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Sphere.msh"));
+	sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Cylinder.msh"));
+	sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Cone.msh"));
+
+	//sceneDiffuse = SOIL_load_OGL_texture(TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	//sceneBump = SOIL_load_OGL_texture(TEXTUREDIR"Barren RedsDOT3.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	//SetTextureRepeating(sceneDiffuse, true);
+	//SetTextureRepeating(sceneBump, true);
+	//glEnable(GL_DEPTH_TEST);
+
+	sceneTransforms.resize(4);
+	sceneTransforms[0] = //Matrix4::Translation(Vector3(0.0f, -500.0f, 0.0f)) *
+		//Matrix4::Scale(Vector3(10.0f, 10.0f, 10.0f)) *
+		Matrix4::Translation(Vector3(4500.0f, 400.0f, 4500.0f)) *
+		Matrix4::Scale(Vector3(1000.0f, 1000.0f, 1000.0f)) *
+		Matrix4::Rotation(90, Vector3(1, 0, 0)) * Matrix4::Scale(Vector3(10, 10, 1));// *
+		//Matrix4::Translation(heightmapSize * Vector3(0.6f, 0.4f, 0.45f)) *
+		//Matrix4::Translation(heightmapSize * Vector3(0.6f, 0.4f, 0.45f)) *
+		//Matrix4::Scale(Vector3(300.0f, 300.0f, 300.0f));
+
+	std::cout << "transformpos before: " << sceneTransforms[0] << "\n";
+	sceneTransforms[0] = sceneTransforms[0] * Matrix4::Scale(Vector3(10.0f, 10.0f, 10.0f));
+	std::cout << "transformpos after: " << sceneTransforms[0] << "\n";
+
+	sceneTime = 0.0f;
+
+
 	init = true;
 }
 
@@ -186,11 +242,23 @@ Renderer::~Renderer(void) {
 	//delete shipMat;
 
 	delete processShader;
+	delete processSceneShader;
 	delete processQuad;
 	glDeleteTextures(2, bufferColourTex);
 	glDeleteTextures(1, &bufferDepthTex);
 	glDeleteFramebuffers(1, &bufferFBO);
 	glDeleteFramebuffers(1, &processFBO);
+
+
+	glDeleteTextures(1, &shadowTex);
+	glDeleteFramebuffers(1, &shadowFBO);
+
+	for (auto& i : sceneMeshes) {
+		delete i;
+	}
+
+	delete shadowSceneShader;
+	delete shadowShader;
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -216,6 +284,38 @@ void Renderer::UpdateScene(float dt) {
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_O)) {
 		postEnabled = false;
 	}
+
+	if (Window::GetKeyboard()->KeyDown(KEYBOARD_U)) {
+		light->SetPosition(light->GetPosition() + Vector3(0.0f, 0.0f, 25.0f));
+	}
+	if (Window::GetKeyboard()->KeyDown(KEYBOARD_J)) {
+		light->SetPosition(light->GetPosition() + Vector3(0.0f, 0.0f, -25.0f));
+	}
+	if (Window::GetKeyboard()->KeyDown(KEYBOARD_H)) {
+		light->SetPosition(light->GetPosition() + Vector3(25.0f, 0.0f, 0.0f));
+	}
+	if (Window::GetKeyboard()->KeyDown(KEYBOARD_K)) {
+		light->SetPosition(light->GetPosition() + Vector3(-25.0f, 0.0f, 0.0f));
+	}
+	if (Window::GetKeyboard()->KeyDown(KEYBOARD_N)) {
+		light->SetPosition(light->GetPosition() + Vector3(0.0f, 25.0f, 0.0f));
+	}
+	if (Window::GetKeyboard()->KeyDown(KEYBOARD_M)) {
+		light->SetPosition(light->GetPosition() + Vector3(0.0f, -25.0f, 0.0f));
+	}
+
+
+	sceneTime += dt;
+
+	for (int i = 1; i < 4; ++i) {
+		Vector3 t = Vector3(-10 + (5 * i), 2.0f + sin(sceneTime * i), 0);
+		sceneTransforms[i] = Matrix4::Translation(Vector3(4500.0f, 400.0f, 4500.0f)) *
+			Matrix4::Scale(Vector3(100.0f, 100.0f, 100.0f)) *
+			Matrix4::Translation(t) * Matrix4::Rotation(sceneTime * 10 * i, Vector3(1, 0, 0));//*
+			//Matrix4::Translation(heightmapSize * Vector3(0.6f, 0.4f, 0.45f)) *
+			//Matrix4::Translation(Vector3(100.0f, 100.0f, 100.0f)) *
+			//Matrix4::Scale(Vector3(300.0f, 300.0f, 300.0f));
+	}
 }
 
 void Renderer::RenderScene() {
@@ -240,8 +340,12 @@ void Renderer::RenderScene() {
 	else {
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		DrawSkybox();
+		//DrawNode(root);
+		//DrawWater();
+		DrawShadowScene();
+
 		DrawNode(root);
-		DrawWater();
+		//DrawMainScene();
 	}
 }
 
@@ -250,10 +354,10 @@ void Renderer::DrawScene() {
 	//glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	BindShader(sceneShader);
+	BindShader(processSceneShader);
 	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 	UpdateShaderMatrices();
-	glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(processSceneShader->GetProgram(), "diffuseTex"), 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, earthTex);
 	heightMap->Draw();
@@ -339,12 +443,13 @@ void Renderer::DrawNode(SceneNode* n) {
 			//FADE LIGHT COLOUR TO RED OVER TIME
 			//light->SetColour(Vector4(light->GetColour().x, light->GetColour().y - 0.0001, light->GetColour().z - 0.0001, light->GetColour().w));
 
-			BindShader(lightShader);
+			BindShader(shadowSceneShader);
 			SetShaderLight(*light);
-			glUniform3fv(glGetUniformLocation(lightShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+			glUniform3fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-			SetTexture(earthTex, 0, "diffuseTex", lightShader, GL_TEXTURE_2D);
-			SetTexture(earthBump, 1, "bumpTex", lightShader, GL_TEXTURE_2D);
+			SetTexture(earthTex, 0, "diffuseTex", shadowSceneShader, GL_TEXTURE_2D);
+			SetTexture(earthBump, 1, "bumpTex", shadowSceneShader, GL_TEXTURE_2D);
+			SetTexture(shadowTex, 2, "shadowTex", shadowSceneShader, GL_TEXTURE_2D);
 
 			modelMatrix.ToIdentity();
 			textureMatrix.ToIdentity();
@@ -352,13 +457,22 @@ void Renderer::DrawNode(SceneNode* n) {
 			UpdateShaderMatrices();
 
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
-			glUniformMatrix4fv(glGetUniformLocation(lightShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+			glUniformMatrix4fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "modelMatrix"), 1, false, model.values);
 
-			glUniform4fv(glGetUniformLocation(lightShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+			glUniform4fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
 
-			glUniform1i(glGetUniformLocation(lightShader->GetProgram(), "useTexture"), 0);
+			glUniform1i(glGetUniformLocation(shadowSceneShader->GetProgram(), "useTexture"), 0);
 
 			n->Draw(*this);
+
+			
+			
+			// DRAW OBJECTS
+			for (int i = 1; i < 4; ++i) {
+				modelMatrix = sceneTransforms[i];
+				UpdateShaderMatrices();
+				sceneMeshes[i]->Draw();
+			}
 		}
 		else
 		{
@@ -446,13 +560,88 @@ void Renderer::DrawPostProcess() {
 void Renderer::PresentScene() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-	BindShader(sceneShader);
+	BindShader(processSceneShader);
 	modelMatrix.ToIdentity();
 	viewMatrix.ToIdentity();
 	projMatrix.ToIdentity();
 	UpdateShaderMatrices();
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
-	glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(processSceneShader->GetProgram(), "diffuseTex"), 0);
 	processQuad->Draw();
+}
+
+
+
+
+void Renderer::DrawShadowScene() {
+	glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, SHADOWSIZE, SHADOWSIZE);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+
+	BindShader(shadowShader);
+
+	viewMatrix = Matrix4::BuildViewMatrix(light->GetPosition(), heightmapSize * Vector3(0.5f, 0.0f, 0.5f));	// POINT TOWARDS CENTRE OF TERRAIN
+	//viewMatrix = Matrix4::BuildViewMatrix(light->GetPosition(), Vector3(light->GetPosition().x, -100000.0f, light->GetPosition().z));	// POINT DOWNWARDS
+	projMatrix = Matrix4::Perspective(1, 10000, 1, 90);
+	shadowMatrix = projMatrix * viewMatrix;
+
+	// DRAW TERRAIN
+	//Matrix4 model = terrain->GetWorldTransform() * Matrix4::Scale(terrain->GetModelScale());
+	//glUniformMatrix4fv(glGetUniformLocation(shadowShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+	//modelMatrix = terrain->GetWorldTransform() * Matrix4::Scale(terrain->GetModelScale());
+	//UpdateShaderMatrices();
+	//terrain->Draw(*this);
+	modelMatrix.ToIdentity();
+	textureMatrix.ToIdentity();
+	UpdateShaderMatrices();
+	Matrix4 model = terrain->GetWorldTransform() * Matrix4::Scale(terrain->GetModelScale());
+	glUniformMatrix4fv(glGetUniformLocation(shadowShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+	glUniform4fv(glGetUniformLocation(shadowShader->GetProgram(), "nodeColour"), 1, (float*)&terrain->GetColour());
+	glUniform1i(glGetUniformLocation(shadowShader->GetProgram(), "useTexture"), 0);
+	terrain->Draw(*this);
+
+	for (int i = 1; i < 4; ++i) {	// DRAW OBJECTS (REMOVE QUAD FROM SLOT 0 LATER)
+		modelMatrix = sceneTransforms[i];
+		UpdateShaderMatrices();
+		sceneMeshes[i]->Draw();
+	}
+
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glViewport(0, 0, width, height);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// RESET VIEW AND PROJ MATRIX
+	viewMatrix = camera->BuildViewMatrix();
+	projMatrix = Matrix4::Perspective(1.0f, 15000.0f, (float)width / (float)height, 45.0f);
+}
+
+void Renderer::DrawMainScene() {
+	BindShader(shadowSceneShader);
+	SetShaderLight(*light);
+	viewMatrix = camera->BuildViewMatrix();
+	projMatrix = Matrix4::Perspective(1.0f, 15000.0f, (float)width / (float)height, 45.0f);
+
+	glUniform1i(glGetUniformLocation(shadowSceneShader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(shadowSceneShader->GetProgram(), "bumpTex"), 1);
+	glUniform1i(glGetUniformLocation(shadowSceneShader->GetProgram(), "shadowTex"), 2);
+
+	glUniform3fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, earthTex);
+
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, earthBump);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, shadowTex);
+
+	for (int i = 0; i < 4; ++i) {
+		modelMatrix = sceneTransforms[i];
+		UpdateShaderMatrices();
+		sceneMeshes[i]->Draw();
+	}
 }

@@ -68,11 +68,24 @@ protected:
 
 	Mesh* processQuad;
 	Shader* processShader;
-	Shader* sceneShader; // might not need
+	Shader* processSceneShader; // might not need
 	GLuint bufferFBO;
 	GLuint processFBO;
 	GLuint bufferColourTex[2];
 	GLuint bufferDepthTex;
-
 	bool postEnabled;
+
+
+	void DrawShadowScene();
+	void DrawMainScene();
+
+	GLuint shadowTex;
+	GLuint shadowFBO;
+	float sceneTime;
+	Shader* shadowSceneShader;
+	Shader* shadowShader;
+	vector<Mesh*> sceneMeshes;
+	vector<Matrix4> sceneTransforms;
+
+	Vector3 heightmapSize;
 };

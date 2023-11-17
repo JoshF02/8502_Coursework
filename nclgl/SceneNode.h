@@ -10,7 +10,7 @@
 
 class SceneNode {
 public:
-	SceneNode(Mesh* m = NULL, Vector4 colour = Vector4(1, 1, 1, 1));
+	SceneNode(Mesh* m = NULL, Vector4 colour = Vector4(1, 1, 1, 1), std::vector<Mesh*> meshes = {});
 	~SceneNode(void);
 
 	void SetTransform(const Matrix4& matrix) { transform = matrix; }
@@ -65,6 +65,8 @@ public:
 	MeshAnimation* GetAnimation() const { return anim; }
 	void SetAnimation(MeshAnimation* anim) { anim = anim; }
 
+	std::vector<Mesh*> GetMeshes() const { return meshes; }
+
 protected:
 	SceneNode* parent;
 	Mesh* mesh;
@@ -84,5 +86,7 @@ protected:
 	Shader* shader;
 	int currentFrame;
 	float frameTime;
+
+	std::vector<Mesh*> meshes;
 };
 

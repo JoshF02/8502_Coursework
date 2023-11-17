@@ -20,7 +20,6 @@ protected:
 	void DrawWater();
 	void DrawSkybox();
 
-	Shader* lightShader;
 	Shader* reflectShader;
 	Shader* skyboxShader;
 
@@ -77,7 +76,6 @@ protected:
 
 
 	void DrawShadowScene();
-	void DrawMainScene();
 
 	GLuint shadowTex;
 	GLuint shadowFBO;
@@ -86,6 +84,9 @@ protected:
 	Shader* shadowShader;
 	vector<Mesh*> sceneMeshes;
 	vector<Matrix4> sceneTransforms;
+	SceneNode* shadowMeshesNode;
 
 	Vector3 heightmapSize;
+
+	Shader* simpleLitShader;
 };

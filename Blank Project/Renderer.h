@@ -60,4 +60,19 @@ protected:
 	GLuint shipTexture;	// remove once i get mat working
 	MeshMaterial* shipMat;
 	vector<GLuint> shipMatTextures;
+
+
+	void PresentScene();
+	void DrawPostProcess();
+	void DrawScene();	// only using for testing - comparing to my scene drawing
+
+	Mesh* processQuad;
+	Shader* processShader;
+	Shader* sceneShader; // might not need
+	GLuint bufferFBO;
+	GLuint processFBO;
+	GLuint bufferColourTex[2];
+	GLuint bufferDepthTex;
+
+	bool postEnabled;
 };

@@ -358,6 +358,7 @@ void Renderer::DrawSkybox() {
 
 void Renderer::DrawWater() {
 	BindShader(reflectShader);
+	SetShaderLight(*light);
 
 	glUniform3fv(glGetUniformLocation(reflectShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 

@@ -1,9 +1,9 @@
 #include "SceneNode.h"
 
-SceneNode::SceneNode(Mesh* mesh, Vector4 colour, std::vector<Mesh*> meshes) {
+SceneNode::SceneNode(Mesh* mesh, Vector4 colour, bool meshIsComplex) {
 	this->mesh = mesh;
 	this->colour = colour;
-	this->meshes = meshes;
+	this->meshIsComplex = meshIsComplex;
 	parent = NULL;
 	modelScale = Vector3(1, 1, 1);
 	boundingRadius = 1.0f;

@@ -58,7 +58,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 	npc = Mesh::LoadFromMeshFile("/Coursework/Monster_Crab.msh");	// ANIMATED CHARACTER
-	//npcShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
 	npcShader = new Shader("/Coursework/CWLitSkinningVertex.glsl", "PerPixelFragment.glsl");
 	anim = new MeshAnimation("/Coursework/Monster_Crab.anm");
 	npcMat = new MeshMaterial("/Coursework/Monster_Crab.mat");
@@ -91,7 +90,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
-	//matShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");	// replaced with simplelitshader / sunshader
 	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");	// STATIC MESHES
 	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");	// change to w/interior for submission, but loads slow
 	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"brick.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
@@ -110,11 +108,12 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	for (int i = 1; i < 4; ++i)
 	{
-		SceneNode* s = new SceneNode(shipMesh);
+		SceneNode* s = new SceneNode(shipMesh, Vector4(1,1,1,1), true);	// mesh is complex
 		s->SetTransform(Matrix4::Translation(heightmapSize * Vector3(0.2f * i, 2.0f, 0.08f * i)));
 		s->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
 		s->SetBoundingRadius(50.0f);
 		s->SetTexture(shipTexture);
+		s->SetOriginalTransform();
 		//s->SetColour(Vector4(0, 1, 0, 1));	// colours the texture, can remove
 		root->AddChild(s);
 	}
@@ -190,18 +189,20 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glDrawBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Sphere.msh"));
+	/*sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Sphere.msh"));
 	sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Cylinder.msh"));
 	sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Cone.msh"));
-
 	sceneTransforms.resize(3);
+	shadowMeshesNode = new SceneNode(NULL, Vector4(1,1,1,1), sceneMeshes);
+	terrain->AddChild(shadowMeshesNode);	// later can change to individual nodes for each*/
+	SceneNode* test = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
+	test->SetTransform(Matrix4::Translation(Vector3(3500.0f, 1000.0f, 3500.0f)));
+	test->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
+	test->SetTexture(earthTex);
+	terrain->AddChild(test);
+
 
 	sceneTime = 0.0f;
-
-	//shadowMeshesNode = new SceneNode(sceneMeshes[0]);
-	shadowMeshesNode = new SceneNode(NULL, Vector4(1,1,1,1), sceneMeshes);
-	terrain->AddChild(shadowMeshesNode);	// later can change to individual nodes for each
-
 
 
 
@@ -225,7 +226,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	init = true;
 }
 
-Renderer::~Renderer(void) {
+Renderer::~Renderer(void) {	// need to check deletes
 	delete camera;
 	delete heightMap;
 	delete quad;
@@ -241,7 +242,6 @@ Renderer::~Renderer(void) {
 	delete anim;
 	delete npcMat;
 
-	//delete matShader;
 	delete shipMesh;
 	//delete shipMat;
 
@@ -257,9 +257,9 @@ Renderer::~Renderer(void) {
 	glDeleteTextures(1, &shadowTex);
 	glDeleteFramebuffers(1, &shadowFBO);
 
-	for (auto& i : sceneMeshes) {
+	/*for (auto& i : sceneMeshes) {
 		delete i;
-	}
+	}*/
 
 	delete shadowSceneShader;
 	delete shadowShader;
@@ -279,8 +279,6 @@ void Renderer::UpdateScene(float dt) {
 	}
 	npcNode->SetCurrentFrame(currentFrame);
 
-	//root->Update(dt);	// moved to bottom
-
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_P)) {
 		postEnabled = true;
 	}
@@ -289,8 +287,8 @@ void Renderer::UpdateScene(float dt) {
 		postEnabled = false;
 	}
 
-	// MOVE POINT LIGHT AROUND - FOR SHADOW TESTING, LATER ADD MULTIPLE POINT LIGHTS TO USE FOR SHADOWS INSTEAD (so whole terrain isnt shadowed)
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_U)) {
+	// MOVE POINT LIGHT AROUND - FOR SHADOW TESTING
+	/*if (Window::GetKeyboard()->KeyDown(KEYBOARD_U)) {
 		light->SetPosition(light->GetPosition() + Vector3(0.0f, 0.0f, 25.0f));
 	}
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_J)) {
@@ -307,17 +305,18 @@ void Renderer::UpdateScene(float dt) {
 	}
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_M)) {
 		light->SetPosition(light->GetPosition() + Vector3(0.0f, -25.0f, 0.0f));
-	}
+	}*/
 
 
 	sceneTime += dt;
 
-	for (int i = 0; i < shadowMeshesNode->GetMeshes().size(); ++i) {
+	/*for (int i = 0; i < shadowMeshesNode->GetMeshes().size(); ++i) {
 		Vector3 t = Vector3(-10 + (5 * i), 2.0f + sin(sceneTime * i), 0);
 		sceneTransforms[i] = Matrix4::Translation(Vector3(4500.0f, 400.0f, 4500.0f)) *
 			Matrix4::Scale(Vector3(100.0f, 100.0f, 100.0f)) *
 			Matrix4::Translation(t) * Matrix4::Rotation(sceneTime * 10 * (i+1), Vector3(1, 0, 0));
-	}
+	}*/
+	ApplyFloatingMovement(root, 1);
 
 	// ORBITING LIGHT MANAGEMENT
 	Vector3 orbitPos = orbit->CalculateRelativePosition();
@@ -328,6 +327,21 @@ void Renderer::UpdateScene(float dt) {
 	else light->SetRadius(heightmapSize.x * 2);	// can maybe reduce to just heightmapSize.x
 
 	root->Update(dt);
+}
+
+int Renderer::ApplyFloatingMovement(SceneNode* n, int count) {
+	if (n->GetMesh() == shipMesh) {;
+		n->SetTransform(n->GetOriginalTransform() *
+			Matrix4::Translation(Vector3(2.0f + cos(sceneTime * count) * 10, 2.0f + sin(sceneTime * count) * 50, 2.0f + sin(sceneTime * count) * 10)));
+			
+		count++;
+	}
+
+	for (vector<SceneNode*>::const_iterator i = n->GetChildIteratorStart(); i != n->GetChildIteratorEnd(); ++i) {
+		count = ApplyFloatingMovement(*i, count);
+	}
+
+	return count;
 }
 
 void Renderer::RenderScene() {
@@ -352,7 +366,7 @@ void Renderer::RenderScene() {
 	else {
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		DrawSkybox();
-		DrawShadowScene();	// note - shadows arent drawn on water
+		DrawShadowScene();
 		DrawNode(root);
 		DrawWater();
 	}
@@ -408,7 +422,7 @@ void Renderer::DrawWater() {
 }
 
 void Renderer::DrawNode(SceneNode* n) {
-	if (n->GetMesh() != NULL || !n->GetMeshes().empty())
+	if (n->GetMesh() != NULL)// || !n->GetMeshes().empty())
 	{
 		if (n == npcNode)
 		{
@@ -476,7 +490,7 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			n->Draw(*this);
 		}
-		else if (n == shadowMeshesNode) {
+		/*else if (n == shadowMeshesNode) {
 			BindShader(simpleLitShader);	// use simple shader (no bump maps) so that shadows arent drawn on the objects
 			SetShaderLight(*light);
 
@@ -490,11 +504,10 @@ void Renderer::DrawNode(SceneNode* n) {
 				UpdateShaderMatrices();
 				sceneMeshes[i]->Draw();
 			}
-		}
+		}*/
 		else if (n == orbitSunNode) {
 			BindShader(sunShader);
-			//SetShaderLight(*light);
-			SetTexture(n->GetTexture(), 0, "diffuseTex", sunShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
+			SetTexture(n->GetTexture(), 0, "diffuseTex", sunShader, GL_TEXTURE_2D);
 			UpdateShaderMatrices();
 
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
@@ -512,7 +525,6 @@ void Renderer::DrawNode(SceneNode* n) {
 		{
 			BindShader(simpleLitShader);
 			SetShaderLight(*light);
-			//SetTexture(n->GetTexture(), 0, "diffuseTex", matShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
 			UpdateShaderMatrices();
 
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
@@ -524,11 +536,17 @@ void Renderer::DrawNode(SceneNode* n) {
 			nodeTex = n->GetTexture();
 			glUniform1i(glGetUniformLocation(simpleLitShader->GetProgram(), "useTexture"), nodeTex);
 
-			for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)	// for simple mesh instead use n->Draw(*this); 
-			{
-				glActiveTexture(GL_TEXTURE0);
-				glBindTexture(GL_TEXTURE_2D, shipMatTextures[i]);
-				shipMesh->DrawSubMesh(i);
+			if (n->meshIsComplex) {
+				for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)	
+				{
+					glActiveTexture(GL_TEXTURE0);
+					glBindTexture(GL_TEXTURE_2D, shipMatTextures[i]);
+					shipMesh->DrawSubMesh(i);
+				}
+			}
+			else {
+				SetTexture(n->GetTexture(), 0, "diffuseTex", simpleLitShader, GL_TEXTURE_2D);
+				n->Draw(*this);
 			}
 		}
 	}
@@ -619,22 +637,13 @@ void Renderer::DrawShadowScene() {
 	BindShader(shadowShader);
 
 	viewMatrix = Matrix4::BuildViewMatrix(light->GetPosition(), heightmapSize * Vector3(0.5f, 0.0f, 0.5f));	// POINT TOWARDS CENTRE OF TERRAIN
-	//viewMatrix = Matrix4::BuildViewMatrix(light->GetPosition(), Vector3(light->GetPosition().x, -100000.0f, light->GetPosition().z));	// POINT DOWNWARDS
 
 	projMatrix = Matrix4::Perspective(1, 10000, 1, 90);	// MODIFY SHADOW POINT LIGHT VARIABLES HERE
 	shadowMatrix = projMatrix * viewMatrix;
 	
-	// REMOVING TERRAIN DRAWING HERE STOPS TERRAIN FROM DRAWING SHADOWS (shadows still drawn on it though)
-	//modelMatrix = terrain->GetWorldTransform() * Matrix4::Scale(terrain->GetModelScale());	// DRAW TERRAIN
-	//UpdateShaderMatrices();
-	//terrain->Draw(*this);
-
-	/*for (int i = 0; i < shadowMeshesNode->GetMeshes().size(); ++i) {	// DRAW OBJECTS
-		modelMatrix = sceneTransforms[i];
-		UpdateShaderMatrices();
-		sceneMeshes[i]->Draw();
-	}*/
+	
 	DrawNodeShadows(root);
+
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glViewport(0, 0, width, height);
@@ -650,18 +659,18 @@ void Renderer::DrawNodeShadows(SceneNode* n) {
 	if (n != terrain && n != orbitSunNode) {	// dont draw shadows for these
 
 		if (n->GetMesh()) {
-			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());	// DRAW TERRAIN
+			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());	// DRAW SHADOWS FOR INDIVIDUAL NODES
 			UpdateShaderMatrices();
 			n->Draw(*this);
 		}
 
-		if (!n->GetMeshes().empty()) {
+		/*if (!n->GetMeshes().empty()) {
 			for (int i = 0; i < sceneMeshes.size(); ++i) {	// DRAW SHADOW OBJECTS - REPLACE WITH INDIVIDUAL NODES LATER
 				modelMatrix = sceneTransforms[i];
 				UpdateShaderMatrices();
 				sceneMeshes[i]->Draw();
 			}
-		}
+		}*/
 	}
 
 	for (vector<SceneNode*>::const_iterator i = n->GetChildIteratorStart(); i != n->GetChildIteratorEnd(); ++i) {

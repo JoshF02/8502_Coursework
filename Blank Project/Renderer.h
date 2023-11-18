@@ -83,9 +83,9 @@ protected:
 	float sceneTime;
 	Shader* shadowSceneShader;
 	Shader* shadowShader;
-	vector<Mesh*> sceneMeshes;
-	vector<Matrix4> sceneTransforms;
-	SceneNode* shadowMeshesNode;
+	//vector<Mesh*> sceneMeshes;
+	//vector<Matrix4> sceneTransforms;
+	//SceneNode* shadowMeshesNode;
 
 	Vector3 heightmapSize;
 
@@ -98,4 +98,6 @@ protected:
 	SceneNode* orbitSunNode;
 
 	void DrawNodeShadows(SceneNode* n);
+
+	int ApplyFloatingMovement(SceneNode* n, int count);
 };

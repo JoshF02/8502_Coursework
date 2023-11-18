@@ -7,18 +7,18 @@ const int LIGHT_NUM = 100;
 SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 	quad = Mesh::GenerateQuad();
-	//heightMap = new HeightMap(TEXTUREDIR"noise.png");
 
 	earthTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/2k_moon.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-
 	earthBump = SOIL_load_OGL_texture(TEXTUREDIR"Barren RedsDOT3.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
 	SetTextureRepeating(earthTex, true);
 	SetTextureRepeating(earthBump, true);
 
-	//Vector3 heightmapSize = heightMap->GetHeightmapSize();
+	cubeMap = SOIL_load_OGL_cubemap(
+		TEXTUREDIR"/Coursework/sb_right.png", TEXTUREDIR"/Coursework/sb_left.png",
+		TEXTUREDIR"/Coursework/sb_top.png", TEXTUREDIR"/Coursework/sb_bot.png",
+		TEXTUREDIR"/Coursework/sb_front.png", TEXTUREDIR"/Coursework/sb_back.png", SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
 
-	//camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f), heightmapSize);
 	camera = new Camera(-8.8f, 33.5f, Vector3(5140.0f, 1275.0f, 7700.0f));
 
 	pointLights = new Light[LIGHT_NUM];
@@ -31,10 +31,8 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 
 		float angleS = DegToRad(rand() % 360);
 		float angleT = DegToRad(rand() % 360);
-
 		l.SetPosition(Vector3(lightRadius * cos(angleS) * sin(angleT), lightRadius * sin(angleS) * sin(angleT), lightRadius * cos(angleT)));
 
-		//l.SetPosition(Vector3(rand() % (int)heightmapSize.x, 150.0f, rand() % (int)heightmapSize.z)); // CHANGE TO ON SPHERE SURFACE / IN SPACE
 		l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 1));
 		l.SetRadius(250.0f + (rand() % 250));
 	}
@@ -42,8 +40,9 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 	sceneShader = new Shader("BumpVertex.glsl", "BufferFragment.glsl");
 	pointlightShader = new Shader("PointlightVertex.glsl", "PointlightFrag.glsl");
 	combineShader = new Shader("CombineVert.glsl", "CombineFrag.glsl");
+	skyboxShader = new Shader("SkyboxVertex.glsl", "SkyboxFragment.glsl");
 
-	if (!sceneShader->LoadSuccess() || !pointlightShader->LoadSuccess() || !combineShader->LoadSuccess()) return;
+	if (!sceneShader->LoadSuccess() || !pointlightShader->LoadSuccess() || !combineShader->LoadSuccess() || !skyboxShader->LoadSuccess()) return;
 
 	glGenFramebuffers(1, &bufferFBO);
 	glGenFramebuffers(1, &pointLightFBO);
@@ -84,7 +83,6 @@ SpaceRenderer::~SpaceRenderer(void) {
 	delete combineShader;
 	delete pointlightShader;
 
-	//delete heightMap;
 	delete camera;
 	delete sphere;
 	delete quad;
@@ -119,8 +117,6 @@ void SpaceRenderer::GenerateScreenTexture(GLuint& into, bool depth) {
 
 void SpaceRenderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
-
-	//std::cout << camera->GetPitch() << "\n" << camera->GetYaw() << "\n" << camera->GetPosition() << "\n\n\n";
 }
 
 void SpaceRenderer::RenderScene() {
@@ -134,6 +130,11 @@ void SpaceRenderer::FillBuffers() {
 	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+	viewMatrix = camera->BuildViewMatrix();
+	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+
+	DrawSkybox();
+
 	BindShader(sceneShader);
 	glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "diffuseTex"), 0);
 	glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "bumpTex"), 1);
@@ -144,23 +145,11 @@ void SpaceRenderer::FillBuffers() {
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, earthBump);
 
-	modelMatrix.ToIdentity();
-	viewMatrix = camera->BuildViewMatrix();
-	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+	modelMatrix = Matrix4::Scale(Vector3(radius, radius, radius));
 
 	UpdateShaderMatrices();
 
-	//heightMap->Draw();
-
-
-
-	modelMatrix = //Matrix4::Translation(Vector3(1000.0f, 200.0f, 1000.0f)) *
-		Matrix4::Scale(Vector3(radius, radius, radius));
-
-	UpdateShaderMatrices();
 	sphere->Draw();
-
-
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -229,4 +218,14 @@ void SpaceRenderer::CombineBuffers() {
 	glBindTexture(GL_TEXTURE_2D, lightSpecularTex);
 
 	quad->Draw();
+}
+
+void SpaceRenderer::DrawSkybox() {
+	glDepthMask(GL_FALSE);
+
+	BindShader(skyboxShader);
+	UpdateShaderMatrices();
+
+	quad->Draw();
+	glDepthMask(GL_TRUE);
 }

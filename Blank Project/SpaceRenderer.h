@@ -20,10 +20,12 @@ protected:
 	void DrawPointLights();
 	void CombineBuffers();
 	void GenerateScreenTexture(GLuint& into, bool depth = false);
+	void DrawSkybox();
 
 	Shader* sceneShader;
 	Shader* pointlightShader;
 	Shader* combineShader;
+	Shader* skyboxShader;
 	GLuint bufferFBO;
 	GLuint bufferColourTex;
 	GLuint bufferNormalTex;
@@ -32,8 +34,8 @@ protected:
 	GLuint pointLightFBO;
 	GLuint lightDiffuseTex;
 	GLuint lightSpecularTex;
+	GLuint cubeMap;
 
-	//HeightMap* heightMap;
 	Light* pointLights;
 	Mesh* sphere;
 	Mesh* quad;

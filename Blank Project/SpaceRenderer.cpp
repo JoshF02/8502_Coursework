@@ -2,30 +2,39 @@
 #include "../nclgl/HeightMap.h"
 #include "../nclgl/Camera.h"
 #include "../nclgl/Light.h"
-const int LIGHT_NUM = 32;
+const int LIGHT_NUM = 100;
 
 SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 	sphere = Mesh::LoadFromMeshFile("Sphere.msh");
 	quad = Mesh::GenerateQuad();
-	heightMap = new HeightMap(TEXTUREDIR"noise.png");
+	//heightMap = new HeightMap(TEXTUREDIR"noise.png");
 
-	earthTex = SOIL_load_OGL_texture(TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	earthTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/2k_moon.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
 	earthBump = SOIL_load_OGL_texture(TEXTUREDIR"Barren RedsDOT3.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
 	SetTextureRepeating(earthTex, true);
 	SetTextureRepeating(earthBump, true);
 
-	Vector3 heightmapSize = heightMap->GetHeightmapSize();
+	//Vector3 heightmapSize = heightMap->GetHeightmapSize();
 
-	//camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
-	camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f), heightmapSize);
+	//camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f), heightmapSize);
+	camera = new Camera(-8.8f, 33.5f, Vector3(5140.0f, 1275.0f, 7700.0f));
 
 	pointLights = new Light[LIGHT_NUM];
 
+	radius = 2500.0f;
+	float lightRadius = radius + 150.0f;
+
 	for (int i = 0; i < LIGHT_NUM; ++i) {
 		Light& l = pointLights[i];
-		l.SetPosition(Vector3(rand() % (int)heightmapSize.x, 150.0f, rand() % (int)heightmapSize.z));
+
+		float angleS = DegToRad(rand() % 360);
+		float angleT = DegToRad(rand() % 360);
+
+		l.SetPosition(Vector3(lightRadius * cos(angleS) * sin(angleT), lightRadius * sin(angleS) * sin(angleT), lightRadius * cos(angleT)));
+
+		//l.SetPosition(Vector3(rand() % (int)heightmapSize.x, 150.0f, rand() % (int)heightmapSize.z)); // CHANGE TO ON SPHERE SURFACE / IN SPACE
 		l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 1));
 		l.SetRadius(250.0f + (rand() % 250));
 	}
@@ -75,7 +84,7 @@ SpaceRenderer::~SpaceRenderer(void) {
 	delete combineShader;
 	delete pointlightShader;
 
-	delete heightMap;
+	//delete heightMap;
 	delete camera;
 	delete sphere;
 	delete quad;
@@ -110,6 +119,8 @@ void SpaceRenderer::GenerateScreenTexture(GLuint& into, bool depth) {
 
 void SpaceRenderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
+
+	//std::cout << camera->GetPitch() << "\n" << camera->GetYaw() << "\n" << camera->GetPosition() << "\n\n\n";
 }
 
 void SpaceRenderer::RenderScene() {
@@ -139,7 +150,17 @@ void SpaceRenderer::FillBuffers() {
 
 	UpdateShaderMatrices();
 
-	heightMap->Draw();
+	//heightMap->Draw();
+
+
+
+	modelMatrix = //Matrix4::Translation(Vector3(1000.0f, 200.0f, 1000.0f)) *
+		Matrix4::Scale(Vector3(radius, radius, radius));
+
+	UpdateShaderMatrices();
+	sphere->Draw();
+
+
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

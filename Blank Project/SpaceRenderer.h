@@ -33,11 +33,13 @@ protected:
 	GLuint lightDiffuseTex;
 	GLuint lightSpecularTex;
 
-	HeightMap* heightMap;
+	//HeightMap* heightMap;
 	Light* pointLights;
 	Mesh* sphere;
 	Mesh* quad;
 	Camera* camera;
 	GLuint earthTex;
 	GLuint earthBump;
+
+	float radius;
 };

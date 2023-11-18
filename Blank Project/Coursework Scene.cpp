@@ -10,12 +10,12 @@ int main()	{
 		return -1;
 	}
 	
-	OGLRenderer* renderer = new Renderer(w);	// careful with performance - renderer created on heap not stack
+	OGLRenderer* renderer = new SpaceRenderer(w);	// careful with performance - renderer created on heap not stack
 	if(!(*renderer).HasInitialised()) {
 		return -1;
 	}
 
-	bool useSpaceRenderer = false;
+	bool useSpaceRenderer = true;
 
 	w.LockMouseToWindow(true);
 	w.ShowOSPointer(false);

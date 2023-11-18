@@ -38,11 +38,11 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 		l.SetInitialRadius();
 	}
 
-	sceneShader = new Shader("BumpVertex.glsl", "BufferFragment.glsl");
+	sceneShader = new Shader("BumpVertex.glsl", "/Coursework/CWBufferFragment.glsl");
 	pointlightShader = new Shader("PointlightVertex.glsl", "PointlightFrag.glsl");
-	combineShader = new Shader("CombineVert.glsl", "CombineFrag.glsl");
+	combineShader = new Shader("CombineVert.glsl", "/Coursework/CWCombineFrag.glsl");
 	skyboxShader = new Shader("SkyboxVertex.glsl", "SkyboxFragment.glsl");
-	sunShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
+	sunShader = new Shader("SceneVertex.glsl", "/Coursework/CWSceneFragment.glsl");
 
 	if (!sceneShader->LoadSuccess() || !pointlightShader->LoadSuccess() || !combineShader->LoadSuccess() || !skyboxShader->LoadSuccess() || !sunShader->LoadSuccess()) return;
 
@@ -79,7 +79,7 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 
 	sunOrbit = new Orbit(0.0f, Vector3(0,0,0), Vector3(5000.0f, 0.0f, 0.0f), 0.05f);
 	sunTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/2k_sun.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	sunLight = new Light(Vector3(0,0,0), Vector4(1,0.75,0.5,1), 25000.0f);
+	sunLight = new Light(Vector3(0,0,0), Vector4(1,0.75,0.5,1), 30000.0f);
 
 	sceneTime = 0.0f;
 	init = true;

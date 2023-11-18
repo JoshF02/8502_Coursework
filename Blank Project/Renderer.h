@@ -101,4 +101,6 @@ protected:
 	void DrawNodeShadows(SceneNode* n);
 
 	int ApplyFloatingMovement(SceneNode* n, int count);
+
+	bool camAutoHasStarted;
 };

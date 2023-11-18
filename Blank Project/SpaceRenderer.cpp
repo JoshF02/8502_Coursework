@@ -79,7 +79,7 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 
 	sunOrbit = new Orbit(0.0f, Vector3(0,0,0), Vector3(5000.0f, 0.0f, 0.0f), 0.05f);
 	sunTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/2k_sun.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	sunLight = new Light(Vector3(0,0,0), Vector4(1,0.75,0.5,1), 15000.0f);
+	sunLight = new Light(Vector3(0,0,0), Vector4(1,0.75,0.5,1), 25000.0f);
 
 	sceneTime = 0.0f;
 	init = true;
@@ -152,7 +152,7 @@ void SpaceRenderer::FillBuffers() {
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	viewMatrix = camera->BuildViewMatrix();
-	projMatrix = Matrix4::Perspective(1.0f, 30000.0f, (float)width / (float)height, 45.0f);
+	projMatrix = Matrix4::Perspective(1.0f, 50000.0f, (float)width / (float)height, 45.0f);
 
 	DrawSkybox();
 

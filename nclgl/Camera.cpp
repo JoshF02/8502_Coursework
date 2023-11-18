@@ -27,7 +27,7 @@ void Camera::UpdateCamera(float dt)
 	if (automated) {
 		if (zneg) {
 			position += Vector3(0, 0, -1) * timeSpeed;
-			if (position.z < 0) {
+			if (position.z < halfHMSize) {
 				position.z += 10.0f;
 				xneg = true;
 				zneg = false;
@@ -35,7 +35,7 @@ void Camera::UpdateCamera(float dt)
 		}
 		if (zpos) {
 			position += Vector3(0, 0, 1) * timeSpeed;
-			if (position.z > heightmapSize.z) {
+			if (position.z > heightmapSize.z + halfHMSize) {
 				position.z -= 10.0f;
 				xpos = true;
 				zpos = false;
@@ -43,7 +43,7 @@ void Camera::UpdateCamera(float dt)
 		}
 		if (xneg) {
 			position += Vector3(-1, 0, 0) * timeSpeed;
-			if (position.x < 0) {
+			if (position.x < halfHMSize) {
 				position.x += 10.0f;
 				zpos = true;
 				xneg = false;
@@ -51,7 +51,7 @@ void Camera::UpdateCamera(float dt)
 		}
 		if (xpos) {
 			position += Vector3(1, 0, 0) * timeSpeed;
-			if (position.x > heightmapSize.x) {
+			if (position.x > heightmapSize.x + halfHMSize) {
 				position.x -= 10.0f;
 				zneg = true;
 				xpos = false;
@@ -86,14 +86,7 @@ void Camera::UpdateCamera(float dt)
 	}
 
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_C)) {
-		automated = true;
-		position = heightmapSize * Vector3(1.0f, 5.0f, 1.0f);
-		yaw = 0;
-		pitch = -20;
-		zneg = true;
-		zpos = false;
-		xpos = false;
-		xneg = false;
+		TriggerAuto();
 	}
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_V)) {
 		automated = false;

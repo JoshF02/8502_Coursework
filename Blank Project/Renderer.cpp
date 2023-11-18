@@ -37,10 +37,13 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	heightmapSize = heightMap->GetHeightmapSize();
 
-	camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f), heightmapSize);
-	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 2);	// POINT LIGHT
+	//camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f), heightmapSize);
+	camera = new Camera(-20, 0, (heightmapSize * Vector3(1.0f, 5.0f, 1.0f)) + Vector3(heightmapSize.x / 2, 0, heightmapSize.x / 2), heightmapSize);
+	camAutoHasStarted = false;
+	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 4);	// POINT LIGHT
+	light->SetInitialRadius();
 
-	projMatrix = Matrix4::Perspective(1.0f, 15000.0f, (float)width / (float)height, 45.0f);
+	projMatrix = Matrix4::Perspective(1.0f, 25000.0f, (float)width / (float)height, 45.0f);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
@@ -53,6 +56,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	root = new SceneNode();	// SCENE GRAPH FUNCTIONALITY
 	terrain = new SceneNode();
 	terrain->SetMesh(heightMap);
+	terrain->SetModelScale(Vector3(2.0, 2.0, 2.0));
 	root->AddChild(terrain);
 
 
@@ -192,14 +196,13 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	
 	// static sphere for testing
 	SceneNode* test = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
-	test->SetTransform(Matrix4::Translation(Vector3(3500.0f, 1000.0f, 3500.0f)));
+	test->SetTransform(Matrix4::Translation(Vector3(heightmapSize.x / 2, 1000.0f, heightmapSize.z / 2) * terrain->GetModelScale().x));
 	test->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
 	test->SetTexture(earthTex);
 	terrain->AddChild(test);
 
 
 	sceneTime = 0.0f;
-
 
 
 	// sun orbiting around centre of terrain
@@ -209,12 +212,12 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// for planets, use other 2k textures from https://www.solarsystemscope.com/textures/ and use simpleLitShader
 	
-	Vector3 terrainCentrePos = Vector3(heightmapSize.x / 2, 0.0f, heightmapSize.z / 2);
+	Vector3 terrainCentrePos = Vector3(heightmapSize.x / 2, 0.0f, heightmapSize.z / 2) * terrain->GetModelScale().x;
 	terrainCentreNode = new SceneNode();
 	terrainCentreNode->SetTransform(Matrix4::Translation(terrainCentrePos));
 	root->AddChild(terrainCentreNode);
 
-	Vector3 sunRelativePosition = Vector3(8000.0f, 0.0f, 0.0f);
+	Vector3 sunRelativePosition = Vector3(12000.0f, 0.0f, 0.0f);
 	orbitSunNode = new SceneNode(orbitSun);
 	orbitSunNode->SetTransform(Matrix4::Translation(sunRelativePosition));
 	orbitSunNode->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
@@ -286,6 +289,11 @@ void Renderer::UpdateScene(float dt) {
 
 	sceneTime += dt;
 
+	if (!camAutoHasStarted) {	// start automatic camera movement
+		camera->TriggerAuto();
+		camAutoHasStarted = true;
+	}
+
 	ApplyFloatingMovement(root, 1);
 
 
@@ -295,7 +303,7 @@ void Renderer::UpdateScene(float dt) {
 	light->SetPosition(orbitPos + terrainCentreNode->GetTransform().GetPositionVector());	// light position = sun local pos + terrain centre global pos
 
 	if (orbitPos.y < -750.0f) light->SetRadius(0.0f);
-	else light->SetRadius(heightmapSize.x * 2);	// can maybe reduce to just heightmapSize.x
+	else light->SetRadius(light->GetInitialRadius());	
 
 
 	root->Update(dt);
@@ -384,8 +392,9 @@ void Renderer::DrawWater() {
 	SetTexture(cubeMap, 2, "cubeTex", reflectShader, GL_TEXTURE_CUBE_MAP);
 
 	Vector3 hSize = heightMap->GetHeightmapSize();
+	float scaleFac = terrain->GetModelScale().x;	// scales water size with terrain size
 
-	modelMatrix = Matrix4::Translation(hSize * 0.5f) * Matrix4::Scale(hSize * 0.5f) * Matrix4::Rotation(90, Vector3(1, 0, 0));
+	modelMatrix = Matrix4::Translation(hSize * 0.5f * scaleFac) * Matrix4::Scale(hSize * 0.5f * scaleFac) * Matrix4::Rotation(90, Vector3(1, 0, 0));
 
 	textureMatrix = Matrix4::Translation(Vector3(waterCycle, 0.0f, waterCycle)) * Matrix4::Scale(Vector3(10, 10, 10)) * Matrix4::Rotation(waterRotate, Vector3(0, 0, 1));
 
@@ -595,7 +604,7 @@ void Renderer::DrawShadowScene() {
 
 	viewMatrix = Matrix4::BuildViewMatrix(light->GetPosition(), heightmapSize * Vector3(0.5f, 0.0f, 0.5f));	// POINT TOWARDS CENTRE OF TERRAIN
 
-	projMatrix = Matrix4::Perspective(1, 10000, 1, 90);	// MODIFY SHADOW POINT LIGHT VARIABLES HERE
+	projMatrix = Matrix4::Perspective(1, 30000, 1, 90);	// MODIFY SHADOW POINT LIGHT VARIABLES HERE
 	shadowMatrix = projMatrix * viewMatrix;
 	
 	

@@ -9,12 +9,14 @@ public:
 		yaw = 0.0f;
 		pitch = 0.0f;
 		speed = 2000.0f;
+		heightmapSize = Vector3(0, 0, 0);
 		position = heightmapSize * Vector3(1.0f, 2.0f, 1.0f);
 		automated = false;
 		zneg = false;
 		zpos = false;
 		xneg = false;
 		xpos = false;
+		halfHMSize = heightmapSize.x / 2;
 	};
 
 	Camera(float pitch, float yaw, Vector3 position, Vector3 heightmapSize = Vector3(0,0,0)) {
@@ -28,6 +30,18 @@ public:
 		zpos = false;
 		xneg = false;
 		xpos = false;
+		halfHMSize = heightmapSize.x / 2;
+	}
+
+	void TriggerAuto() {
+		automated = true;
+		position = (heightmapSize * Vector3(1.0f, 5.0f, 1.0f)) + Vector3(halfHMSize, 0, halfHMSize);
+		yaw = 0;
+		pitch = -20;
+		zneg = true;
+		zpos = false;
+		xpos = false;
+		xneg = false;
 	}
 
 	~Camera(void) {};
@@ -58,5 +72,6 @@ protected:
 	bool zpos;
 	bool xneg;
 	bool xpos;
+	float halfHMSize;
 };
 

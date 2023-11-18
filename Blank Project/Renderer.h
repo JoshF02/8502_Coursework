@@ -93,9 +93,9 @@ protected:
 	Shader* sunShader;
 
 	Orbit* orbit;
-	Mesh* orbitPlanet;
-	SceneNode* orbitPlanetNode;
-	SceneNode* orbitMoonNode;
+	Mesh* orbitSun;
+	SceneNode* terrainCentreNode;
+	SceneNode* orbitSunNode;
 
 	void DrawNodeShadows(SceneNode* n);
 };

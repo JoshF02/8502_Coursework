@@ -14,7 +14,7 @@ Orbit::Orbit(float angle, Vector3 rotCenter, Vector3 position, float rotationAmo
     radius = hypot(hypot(position.x - rotCenter.x, position.y - rotCenter.y), position.z - rotCenter.z);
 }
 
-Vector3 Orbit::CalculatePosition() {
+Vector3 Orbit::CalculateRelativePosition() {
     angleDegrees += rotationAmount;
 
     if (angleDegrees >= 360.0f)
@@ -29,5 +29,5 @@ Vector3 Orbit::CalculatePosition() {
 
     position = Vector3(x, y, position.z);
 
-    return position;
+    return position - rotCenter;    // subtract centre position as orbiting object will be a child of centre node, so its local transform shouldnt include rotCenter
 }

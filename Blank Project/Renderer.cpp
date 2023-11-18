@@ -205,24 +205,22 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
-	// orbit testing
-	orbitPlanet = Mesh::LoadFromMeshFile("Sphere.msh");
+	// sun orbiting around centre of terrain
+	orbitSun = Mesh::LoadFromMeshFile("Sphere.msh");
 	
-	Vector3 orbitPlanetPosition = Vector3(heightmapSize.x / 2, 0.0f, heightmapSize.z / 2);
-	//orbitPlanetNode = new SceneNode(orbitPlanet);
-	//orbitPlanetNode->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
-	//orbitPlanetNode->SetTransform(Matrix4::Translation(orbitPlanetPosition));
-	//orbitPlanetNode->SetTexture(earthTex);
-	//root->AddChild(orbitPlanetNode);
+	Vector3 terrainCentrePos = Vector3(heightmapSize.x / 2, 0.0f, heightmapSize.z / 2);
+	terrainCentreNode = new SceneNode();
+	terrainCentreNode->SetTransform(Matrix4::Translation(terrainCentrePos));
+	root->AddChild(terrainCentreNode);
 
-	Vector3 orbitMoonPosition = orbitPlanetPosition + Vector3(5000.0f, 0.0f, 0.0f);
-	orbitMoonNode = new SceneNode(orbitPlanet);
-	orbitMoonNode->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
-	orbitMoonNode->SetTransform(Matrix4::Translation(orbitMoonPosition));
-	orbitMoonNode->SetTexture(earthTex);
-	root->AddChild(orbitMoonNode);
+	Vector3 sunRelativePosition = Vector3(5000.0f, 0.0f, 0.0f);
+	orbitSunNode = new SceneNode(orbitSun);
+	orbitSunNode->SetTransform(Matrix4::Translation(sunRelativePosition));
+	orbitSunNode->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
+	orbitSunNode->SetTexture(earthTex);
+	terrainCentreNode->AddChild(orbitSunNode);
 
-	orbit = new Orbit(0.0f, orbitPlanetPosition, orbitMoonPosition, 0.05f);
+	orbit = new Orbit(0.0f, terrainCentrePos, sunRelativePosition + terrainCentrePos, 0.05f);
 
 	init = true;
 }
@@ -281,7 +279,7 @@ void Renderer::UpdateScene(float dt) {
 	}
 	npcNode->SetCurrentFrame(currentFrame);
 
-	root->Update(dt);
+	//root->Update(dt);	// moved to bottom
 
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_P)) {
 		postEnabled = true;
@@ -322,12 +320,14 @@ void Renderer::UpdateScene(float dt) {
 	}
 
 	// ORBITING LIGHT MANAGEMENT
-	Vector3 orbitPos = orbit->CalculatePosition();
-	orbitMoonNode->SetTransform(Matrix4::Translation(orbitPos));
-	light->SetPosition(orbitPos);
+	Vector3 orbitPos = orbit->CalculateRelativePosition();
+	orbitSunNode->SetTransform(Matrix4::Translation(orbitPos));
+	light->SetPosition(orbitPos + terrainCentreNode->GetTransform().GetPositionVector());	// light position = sun local pos + terrain centre global pos
 
 	if (orbitPos.y < -750.0f) light->SetRadius(0.0f);
 	else light->SetRadius(heightmapSize.x * 2);	// can maybe reduce to just heightmapSize.x
+
+	root->Update(dt);
 }
 
 void Renderer::RenderScene() {
@@ -491,7 +491,7 @@ void Renderer::DrawNode(SceneNode* n) {
 				sceneMeshes[i]->Draw();
 			}
 		}
-		else if (n == orbitPlanetNode || n == orbitMoonNode) {
+		else if (n == orbitSunNode) {
 			BindShader(sunShader);
 			//SetShaderLight(*light);
 			SetTexture(n->GetTexture(), 0, "diffuseTex", sunShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
@@ -647,7 +647,7 @@ void Renderer::DrawShadowScene() {
 
 
 void Renderer::DrawNodeShadows(SceneNode* n) {
-	if (n != terrain && n != orbitPlanetNode && n != orbitMoonNode) {	// dont draw shadows for these
+	if (n != terrain && n != orbitSunNode) {	// dont draw shadows for these
 
 		if (n->GetMesh()) {
 			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());	// DRAW TERRAIN

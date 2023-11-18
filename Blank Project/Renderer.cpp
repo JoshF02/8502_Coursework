@@ -493,13 +493,13 @@ void Renderer::DrawNode(SceneNode* n) {
 		}
 		else if (n == orbitPlanetNode || n == orbitMoonNode) {
 			BindShader(sunShader);
-			SetShaderLight(*light);
+			//SetShaderLight(*light);
 			SetTexture(n->GetTexture(), 0, "diffuseTex", sunShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
 			UpdateShaderMatrices();
 
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			glUniformMatrix4fv(glGetUniformLocation(sunShader->GetProgram(), "modelMatrix"), 1, false, model.values);
-			glUniform4fv(glGetUniformLocation(sunShader->GetProgram(), "colour"), 1, (float*)&n->GetColour());
+			glUniform4fv(glGetUniformLocation(sunShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
 
 			glUniform3fv(glGetUniformLocation(sunShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
@@ -629,11 +629,12 @@ void Renderer::DrawShadowScene() {
 	//UpdateShaderMatrices();
 	//terrain->Draw(*this);
 
-	for (int i = 0; i < shadowMeshesNode->GetMeshes().size(); ++i) {	// DRAW OBJECTS
+	/*for (int i = 0; i < shadowMeshesNode->GetMeshes().size(); ++i) {	// DRAW OBJECTS
 		modelMatrix = sceneTransforms[i];
 		UpdateShaderMatrices();
 		sceneMeshes[i]->Draw();
-	}
+	}*/
+	DrawNodeShadows(root);
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glViewport(0, 0, width, height);
@@ -643,3 +644,28 @@ void Renderer::DrawShadowScene() {
 	viewMatrix = camera->BuildViewMatrix();	// RESET VIEW AND PROJ MATRIX
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f, (float)width / (float)height, 45.0f);
 }
+
+
+void Renderer::DrawNodeShadows(SceneNode* n) {
+	if (n != terrain && n != orbitPlanetNode && n != orbitMoonNode) {	// dont draw shadows for these
+
+		if (n->GetMesh()) {
+			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());	// DRAW TERRAIN
+			UpdateShaderMatrices();
+			n->Draw(*this);
+		}
+
+		if (!n->GetMeshes().empty()) {
+			for (int i = 0; i < sceneMeshes.size(); ++i) {	// DRAW SHADOW OBJECTS - REPLACE WITH INDIVIDUAL NODES LATER
+				modelMatrix = sceneTransforms[i];
+				UpdateShaderMatrices();
+				sceneMeshes[i]->Draw();
+			}
+		}
+	}
+
+	for (vector<SceneNode*>::const_iterator i = n->GetChildIteratorStart(); i != n->GetChildIteratorEnd(); ++i) {
+		DrawNodeShadows(*i);
+	}
+}
+

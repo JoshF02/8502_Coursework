@@ -96,4 +96,6 @@ protected:
 	Mesh* orbitPlanet;
 	SceneNode* orbitPlanetNode;
 	SceneNode* orbitMoonNode;
+
+	void DrawNodeShadows(SceneNode* n);
 };

@@ -55,7 +55,7 @@ protected:
 	float frameTime;
 	GLuint nodeTex;
 
-	Shader* matShader;
+	//Shader* matShader;
 	Mesh* shipMesh;
 	GLuint shipTexture;	// remove once i get mat working
 	MeshMaterial* shipMat;
@@ -90,6 +90,7 @@ protected:
 	Vector3 heightmapSize;
 
 	Shader* simpleLitShader;
+	Shader* sunShader;
 
 	Orbit* orbit;
 	Mesh* orbitPlanet;

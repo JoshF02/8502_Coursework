@@ -58,7 +58,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 	npc = Mesh::LoadFromMeshFile("/Coursework/Monster_Crab.msh");	// ANIMATED CHARACTER
-	npcShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
+	//npcShader = new Shader("SkinningVertex.glsl", "TexturedFragment.glsl");
+	npcShader = new Shader("/Coursework/CWLitSkinningVertex.glsl", "PerPixelFragment.glsl");
 	anim = new MeshAnimation("/Coursework/Monster_Crab.anm");
 	npcMat = new MeshMaterial("/Coursework/Monster_Crab.mat");
 
@@ -90,8 +91,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
-	matShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");	// STATIC MESHES
-	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");	
+	//matShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");	// replaced with simplelitshader / sunshader
+	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");	// STATIC MESHES
 	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");	// change to w/interior for submission, but loads slow
 	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"brick.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
@@ -170,7 +171,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	shadowSceneShader = new Shader("ShadowSceneVert.glsl", "ShadowSceneFrag.glsl");	// SHADOWS
 	shadowShader = new Shader("ShadowVert.glsl", "ShadowFrag.glsl");
 	simpleLitShader = new Shader("PerPixelVertex.glsl", "PerPixelFragment.glsl");
-	if (!shadowSceneShader->LoadSuccess() || !shadowShader->LoadSuccess() || !simpleLitShader->LoadSuccess()) return;
+	sunShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
+	if (!shadowSceneShader->LoadSuccess() || !shadowShader->LoadSuccess() || !simpleLitShader->LoadSuccess() || !sunShader->LoadSuccess()) return;
 
 	glGenTextures(1, &shadowTex);
 	glBindTexture(GL_TEXTURE_2D, shadowTex);
@@ -206,21 +208,21 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	// orbit testing
 	orbitPlanet = Mesh::LoadFromMeshFile("Sphere.msh");
 	
-	Vector3 orbitPlanetPosition = Vector3(heightmapSize.x / 2, 500.0f, heightmapSize.z / 2);
-	orbitPlanetNode = new SceneNode(orbitPlanet);
-	orbitPlanetNode->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
-	orbitPlanetNode->SetTransform(Matrix4::Translation(orbitPlanetPosition));
-	orbitPlanetNode->SetTexture(earthTex);
-	root->AddChild(orbitPlanetNode);
+	Vector3 orbitPlanetPosition = Vector3(heightmapSize.x / 2, 0.0f, heightmapSize.z / 2);
+	//orbitPlanetNode = new SceneNode(orbitPlanet);
+	//orbitPlanetNode->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
+	//orbitPlanetNode->SetTransform(Matrix4::Translation(orbitPlanetPosition));
+	//orbitPlanetNode->SetTexture(earthTex);
+	//root->AddChild(orbitPlanetNode);
 
-	Vector3 orbitMoonPosition = orbitPlanetPosition + Vector3(250.0f, 0.0f, 0.0f);
+	Vector3 orbitMoonPosition = orbitPlanetPosition + Vector3(5000.0f, 0.0f, 0.0f);
 	orbitMoonNode = new SceneNode(orbitPlanet);
-	orbitMoonNode->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
+	orbitMoonNode->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
 	orbitMoonNode->SetTransform(Matrix4::Translation(orbitMoonPosition));
 	orbitMoonNode->SetTexture(earthTex);
 	root->AddChild(orbitMoonNode);
 
-	orbit = new Orbit(0.0f, orbitPlanetPosition, orbitMoonPosition, 0.5f);
+	orbit = new Orbit(0.0f, orbitPlanetPosition, orbitMoonPosition, 0.05f);
 
 	init = true;
 }
@@ -241,7 +243,7 @@ Renderer::~Renderer(void) {
 	delete anim;
 	delete npcMat;
 
-	delete matShader;
+	//delete matShader;
 	delete shipMesh;
 	//delete shipMat;
 
@@ -319,7 +321,13 @@ void Renderer::UpdateScene(float dt) {
 			Matrix4::Translation(t) * Matrix4::Rotation(sceneTime * 10 * (i+1), Vector3(1, 0, 0));
 	}
 
-	orbitMoonNode->SetTransform(Matrix4::Translation(orbit->CalculatePosition()));
+	// ORBITING LIGHT MANAGEMENT
+	Vector3 orbitPos = orbit->CalculatePosition();
+	orbitMoonNode->SetTransform(Matrix4::Translation(orbitPos));
+	light->SetPosition(orbitPos);
+
+	if (orbitPos.y < -750.0f) light->SetRadius(0.0f);
+	else light->SetRadius(heightmapSize.x * 2);	// can maybe reduce to just heightmapSize.x
 }
 
 void Renderer::RenderScene() {
@@ -405,13 +413,14 @@ void Renderer::DrawNode(SceneNode* n) {
 		if (n == npcNode)
 		{
 			BindShader(npcShader);
+			SetShaderLight(*light);
 
 			glUniform1i(glGetUniformLocation(npcShader->GetProgram(), "diffuseTex"), 0);
 			UpdateShaderMatrices();
 
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			glUniformMatrix4fv(glGetUniformLocation(npcShader->GetProgram(), "modelMatrix"), 1, false, model.values);
-			glUniform4fv(glGetUniformLocation(npcShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+			glUniform4fv(glGetUniformLocation(npcShader->GetProgram(), "colour"), 1, (float*)&n->GetColour());
 
 			glUniform3fv(glGetUniformLocation(npcShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
@@ -461,7 +470,7 @@ void Renderer::DrawNode(SceneNode* n) {
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			glUniformMatrix4fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "modelMatrix"), 1, false, model.values);
 
-			glUniform4fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+			glUniform4fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "colour"), 1, (float*)&n->GetColour());
 
 			glUniform1i(glGetUniformLocation(shadowSceneShader->GetProgram(), "useTexture"), 0);
 
@@ -483,35 +492,37 @@ void Renderer::DrawNode(SceneNode* n) {
 			}
 		}
 		else if (n == orbitPlanetNode || n == orbitMoonNode) {
-			BindShader(matShader);
-			SetTexture(n->GetTexture(), 0, "diffuseTex", matShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
+			BindShader(sunShader);
+			SetShaderLight(*light);
+			SetTexture(n->GetTexture(), 0, "diffuseTex", sunShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
 			UpdateShaderMatrices();
 
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
-			glUniformMatrix4fv(glGetUniformLocation(matShader->GetProgram(), "modelMatrix"), 1, false, model.values);
-			glUniform4fv(glGetUniformLocation(matShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+			glUniformMatrix4fv(glGetUniformLocation(sunShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+			glUniform4fv(glGetUniformLocation(sunShader->GetProgram(), "colour"), 1, (float*)&n->GetColour());
 
-			glUniform3fv(glGetUniformLocation(matShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+			glUniform3fv(glGetUniformLocation(sunShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
 			nodeTex = n->GetTexture();
-			glUniform1i(glGetUniformLocation(matShader->GetProgram(), "useTexture"), nodeTex);
+			glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "useTexture"), nodeTex);
 
 			n->Draw(*this); 
 		}
 		else
 		{
-			BindShader(matShader);
+			BindShader(simpleLitShader);
+			SetShaderLight(*light);
 			//SetTexture(n->GetTexture(), 0, "diffuseTex", matShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
 			UpdateShaderMatrices();
 
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
-			glUniformMatrix4fv(glGetUniformLocation(matShader->GetProgram(), "modelMatrix"), 1, false, model.values);
-			glUniform4fv(glGetUniformLocation(matShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+			glUniformMatrix4fv(glGetUniformLocation(simpleLitShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+			glUniform4fv(glGetUniformLocation(simpleLitShader->GetProgram(), "colour"), 1, (float*)&n->GetColour());
 
-			glUniform3fv(glGetUniformLocation(matShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+			glUniform3fv(glGetUniformLocation(simpleLitShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
 			nodeTex = n->GetTexture();
-			glUniform1i(glGetUniformLocation(matShader->GetProgram(), "useTexture"), nodeTex);
+			glUniform1i(glGetUniformLocation(simpleLitShader->GetProgram(), "useTexture"), nodeTex);
 
 			for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)	// for simple mesh instead use n->Draw(*this); 
 			{

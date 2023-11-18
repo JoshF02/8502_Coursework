@@ -189,12 +189,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glDrawBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	/*sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Sphere.msh"));
-	sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Cylinder.msh"));
-	sceneMeshes.emplace_back(Mesh::LoadFromMeshFile("Cone.msh"));
-	sceneTransforms.resize(3);
-	shadowMeshesNode = new SceneNode(NULL, Vector4(1,1,1,1), sceneMeshes);
-	terrain->AddChild(shadowMeshesNode);	// later can change to individual nodes for each*/
+	
+	// static sphere for testing
 	SceneNode* test = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
 	test->SetTransform(Matrix4::Translation(Vector3(3500.0f, 1000.0f, 3500.0f)));
 	test->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
@@ -208,17 +204,21 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// sun orbiting around centre of terrain
 	orbitSun = Mesh::LoadFromMeshFile("Sphere.msh");
+	sunTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/2k_sun.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	SetTextureRepeating(sunTex, true);
+
+	// for planets, use other 2k textures from https://www.solarsystemscope.com/textures/ and use simpleLitShader
 	
 	Vector3 terrainCentrePos = Vector3(heightmapSize.x / 2, 0.0f, heightmapSize.z / 2);
 	terrainCentreNode = new SceneNode();
 	terrainCentreNode->SetTransform(Matrix4::Translation(terrainCentrePos));
 	root->AddChild(terrainCentreNode);
 
-	Vector3 sunRelativePosition = Vector3(5000.0f, 0.0f, 0.0f);
+	Vector3 sunRelativePosition = Vector3(8000.0f, 0.0f, 0.0f);
 	orbitSunNode = new SceneNode(orbitSun);
 	orbitSunNode->SetTransform(Matrix4::Translation(sunRelativePosition));
 	orbitSunNode->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
-	orbitSunNode->SetTexture(earthTex);
+	orbitSunNode->SetTexture(sunTex);
 	terrainCentreNode->AddChild(orbitSunNode);
 
 	orbit = new Orbit(0.0f, terrainCentrePos, sunRelativePosition + terrainCentrePos, 0.05f);
@@ -257,10 +257,6 @@ Renderer::~Renderer(void) {	// need to check deletes
 	glDeleteTextures(1, &shadowTex);
 	glDeleteFramebuffers(1, &shadowFBO);
 
-	/*for (auto& i : sceneMeshes) {
-		delete i;
-	}*/
-
 	delete shadowSceneShader;
 	delete shadowShader;
 }
@@ -287,36 +283,11 @@ void Renderer::UpdateScene(float dt) {
 		postEnabled = false;
 	}
 
-	// MOVE POINT LIGHT AROUND - FOR SHADOW TESTING
-	/*if (Window::GetKeyboard()->KeyDown(KEYBOARD_U)) {
-		light->SetPosition(light->GetPosition() + Vector3(0.0f, 0.0f, 25.0f));
-	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_J)) {
-		light->SetPosition(light->GetPosition() + Vector3(0.0f, 0.0f, -25.0f));
-	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_H)) {
-		light->SetPosition(light->GetPosition() + Vector3(25.0f, 0.0f, 0.0f));
-	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_K)) {
-		light->SetPosition(light->GetPosition() + Vector3(-25.0f, 0.0f, 0.0f));
-	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_N)) {
-		light->SetPosition(light->GetPosition() + Vector3(0.0f, 25.0f, 0.0f));
-	}
-	if (Window::GetKeyboard()->KeyDown(KEYBOARD_M)) {
-		light->SetPosition(light->GetPosition() + Vector3(0.0f, -25.0f, 0.0f));
-	}*/
-
 
 	sceneTime += dt;
 
-	/*for (int i = 0; i < shadowMeshesNode->GetMeshes().size(); ++i) {
-		Vector3 t = Vector3(-10 + (5 * i), 2.0f + sin(sceneTime * i), 0);
-		sceneTransforms[i] = Matrix4::Translation(Vector3(4500.0f, 400.0f, 4500.0f)) *
-			Matrix4::Scale(Vector3(100.0f, 100.0f, 100.0f)) *
-			Matrix4::Translation(t) * Matrix4::Rotation(sceneTime * 10 * (i+1), Vector3(1, 0, 0));
-	}*/
 	ApplyFloatingMovement(root, 1);
+
 
 	// ORBITING LIGHT MANAGEMENT
 	Vector3 orbitPos = orbit->CalculateRelativePosition();
@@ -325,6 +296,7 @@ void Renderer::UpdateScene(float dt) {
 
 	if (orbitPos.y < -750.0f) light->SetRadius(0.0f);
 	else light->SetRadius(heightmapSize.x * 2);	// can maybe reduce to just heightmapSize.x
+
 
 	root->Update(dt);
 }
@@ -349,7 +321,7 @@ void Renderer::RenderScene() {
 		glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		DrawSkybox();
-		DrawNode(root);	//DrawHeightmap();
+		DrawNode(root);	
 		DrawWater();
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -422,7 +394,7 @@ void Renderer::DrawWater() {
 }
 
 void Renderer::DrawNode(SceneNode* n) {
-	if (n->GetMesh() != NULL)// || !n->GetMeshes().empty())
+	if (n->GetMesh() != NULL)
 	{
 		if (n == npcNode)
 		{
@@ -490,21 +462,6 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			n->Draw(*this);
 		}
-		/*else if (n == shadowMeshesNode) {
-			BindShader(simpleLitShader);	// use simple shader (no bump maps) so that shadows arent drawn on the objects
-			SetShaderLight(*light);
-
-			glUniform3fv(glGetUniformLocation(simpleLitShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
-			SetTexture(earthTex, 0, "diffuseTex", simpleLitShader, GL_TEXTURE_2D);
-			textureMatrix.ToIdentity();
-
-			// DRAW OBJECTS - make these child nodes instead
-			for (int i = 0; i < n->GetMeshes().size(); ++i) {
-				modelMatrix = sceneTransforms[i];
-				UpdateShaderMatrices();
-				sceneMeshes[i]->Draw();
-			}
-		}*/
 		else if (n == orbitSunNode) {
 			BindShader(sunShader);
 			SetTexture(n->GetTexture(), 0, "diffuseTex", sunShader, GL_TEXTURE_2D);
@@ -659,18 +616,10 @@ void Renderer::DrawNodeShadows(SceneNode* n) {
 	if (n != terrain && n != orbitSunNode) {	// dont draw shadows for these
 
 		if (n->GetMesh()) {
-			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());	// DRAW SHADOWS FOR INDIVIDUAL NODES
+			modelMatrix = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
 			UpdateShaderMatrices();
 			n->Draw(*this);
 		}
-
-		/*if (!n->GetMeshes().empty()) {
-			for (int i = 0; i < sceneMeshes.size(); ++i) {	// DRAW SHADOW OBJECTS - REPLACE WITH INDIVIDUAL NODES LATER
-				modelMatrix = sceneTransforms[i];
-				UpdateShaderMatrices();
-				sceneMeshes[i]->Draw();
-			}
-		}*/
 	}
 
 	for (vector<SceneNode*>::const_iterator i = n->GetChildIteratorStart(); i != n->GetChildIteratorEnd(); ++i) {

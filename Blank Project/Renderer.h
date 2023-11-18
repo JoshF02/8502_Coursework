@@ -96,6 +96,7 @@ protected:
 	Mesh* orbitSun;
 	SceneNode* terrainCentreNode;
 	SceneNode* orbitSunNode;
+	GLuint sunTex;
 
 	void DrawNodeShadows(SceneNode* n);
 

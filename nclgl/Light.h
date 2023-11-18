@@ -24,9 +24,13 @@ public:
 	Vector4 GetColour() const { return colour; }
 	void SetColour(const Vector4& val) { colour = val; }
 
+	void SetInitialRadius() { initialRadius = radius; }
+	float GetInitialRadius() const { return initialRadius; }
+
 protected:
 	Vector3 position;
 	float radius;
 	Vector4 colour;
+	float initialRadius;
 };
 

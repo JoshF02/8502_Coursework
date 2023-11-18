@@ -35,6 +35,7 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 
 		l.SetColour(Vector4(0, 0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 1));
 		l.SetRadius(250.0f + (rand() % 250));
+		l.SetInitialRadius();
 	}
 
 	sceneShader = new Shader("BumpVertex.glsl", "BufferFragment.glsl");
@@ -132,6 +133,11 @@ void SpaceRenderer::UpdateScene(float dt) {
 		Matrix4::Rotation((sceneTime * 50.0f), Vector3(0, 1, 0));
 
 	sunLight->SetPosition(orbitPos + Vector3(0, 0, -500.0f));
+
+	for (int i = 0; i < LIGHT_NUM; ++i) {
+		Light& l = pointLights[i];
+		l.SetRadius(l.GetInitialRadius() * (sin(sceneTime + l.GetInitialRadius()) + 4) / 4);	// glowing effect
+	}
 }
 
 void SpaceRenderer::RenderScene() {

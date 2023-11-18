@@ -200,6 +200,28 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	shadowMeshesNode = new SceneNode(NULL, Vector4(1,1,1,1), sceneMeshes);
 	terrain->AddChild(shadowMeshesNode);	// later can change to individual nodes for each
 
+
+
+
+	// orbit testing
+	orbitPlanet = Mesh::LoadFromMeshFile("Sphere.msh");
+	
+	Vector3 orbitPlanetPosition = Vector3(heightmapSize.x / 2, 500.0f, heightmapSize.z / 2);
+	orbitPlanetNode = new SceneNode(orbitPlanet);
+	orbitPlanetNode->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
+	orbitPlanetNode->SetTransform(Matrix4::Translation(orbitPlanetPosition));
+	orbitPlanetNode->SetTexture(earthTex);
+	root->AddChild(orbitPlanetNode);
+
+	Vector3 orbitMoonPosition = orbitPlanetPosition + Vector3(250.0f, 0.0f, 0.0f);
+	orbitMoonNode = new SceneNode(orbitPlanet);
+	orbitMoonNode->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
+	orbitMoonNode->SetTransform(Matrix4::Translation(orbitMoonPosition));
+	orbitMoonNode->SetTexture(earthTex);
+	root->AddChild(orbitMoonNode);
+
+	orbit = new Orbit(0.0f, orbitPlanetPosition, orbitMoonPosition, 0.5f);
+
 	init = true;
 }
 
@@ -296,6 +318,8 @@ void Renderer::UpdateScene(float dt) {
 			Matrix4::Scale(Vector3(100.0f, 100.0f, 100.0f)) *
 			Matrix4::Translation(t) * Matrix4::Rotation(sceneTime * 10 * (i+1), Vector3(1, 0, 0));
 	}
+
+	orbitMoonNode->SetTransform(Matrix4::Translation(orbit->CalculatePosition()));
 }
 
 void Renderer::RenderScene() {
@@ -457,6 +481,22 @@ void Renderer::DrawNode(SceneNode* n) {
 				UpdateShaderMatrices();
 				sceneMeshes[i]->Draw();
 			}
+		}
+		else if (n == orbitPlanetNode || n == orbitMoonNode) {
+			BindShader(matShader);
+			SetTexture(n->GetTexture(), 0, "diffuseTex", matShader, GL_TEXTURE_2D);	// for texture uncomment this and comment the texture bind below
+			UpdateShaderMatrices();
+
+			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
+			glUniformMatrix4fv(glGetUniformLocation(matShader->GetProgram(), "modelMatrix"), 1, false, model.values);
+			glUniform4fv(glGetUniformLocation(matShader->GetProgram(), "nodeColour"), 1, (float*)&n->GetColour());
+
+			glUniform3fv(glGetUniformLocation(matShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
+
+			nodeTex = n->GetTexture();
+			glUniform1i(glGetUniformLocation(matShader->GetProgram(), "useTexture"), nodeTex);
+
+			n->Draw(*this); 
 		}
 		else
 		{

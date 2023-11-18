@@ -1,5 +1,6 @@
 #pragma once
 #include "../nclgl/OGLRenderer.h"
+#include "Orbit.h"
 
 class Camera;
 class Shader;
@@ -89,4 +90,9 @@ protected:
 	Vector3 heightmapSize;
 
 	Shader* simpleLitShader;
+
+	Orbit* orbit;
+	Mesh* orbitPlanet;
+	SceneNode* orbitPlanetNode;
+	SceneNode* orbitMoonNode;
 };

@@ -33,7 +33,7 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 		float angleT = DegToRad(rand() % 360);
 		l.SetPosition(Vector3(lightRadius * cos(angleS) * sin(angleT), lightRadius * sin(angleS) * sin(angleT), lightRadius * cos(angleT)));
 
-		l.SetColour(Vector4(0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 1));
+		l.SetColour(Vector4(0, 0.5f + (float)(rand() / (float)RAND_MAX), 0.5f + (float)(rand() / (float)RAND_MAX), 1));
 		l.SetRadius(250.0f + (rand() % 250));
 	}
 
@@ -41,8 +41,9 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 	pointlightShader = new Shader("PointlightVertex.glsl", "PointlightFrag.glsl");
 	combineShader = new Shader("CombineVert.glsl", "CombineFrag.glsl");
 	skyboxShader = new Shader("SkyboxVertex.glsl", "SkyboxFragment.glsl");
+	sunShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
 
-	if (!sceneShader->LoadSuccess() || !pointlightShader->LoadSuccess() || !combineShader->LoadSuccess() || !skyboxShader->LoadSuccess()) return;
+	if (!sceneShader->LoadSuccess() || !pointlightShader->LoadSuccess() || !combineShader->LoadSuccess() || !skyboxShader->LoadSuccess() || !sunShader->LoadSuccess()) return;
 
 	glGenFramebuffers(1, &bufferFBO);
 	glGenFramebuffers(1, &pointLightFBO);
@@ -75,6 +76,11 @@ SpaceRenderer::SpaceRenderer(Window& parent) : OGLRenderer(parent) {
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_BLEND);
 
+	sunOrbit = new Orbit(0.0f, Vector3(0,0,0), Vector3(5000.0f, 0.0f, 0.0f), 0.05f);
+	sunTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/2k_sun.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	sunLight = new Light(Vector3(0,0,0), Vector4(1,0.75,0.5,1), 15000.0f);
+
+	sceneTime = 0.0f;
 	init = true;
 }
 
@@ -117,6 +123,15 @@ void SpaceRenderer::GenerateScreenTexture(GLuint& into, bool depth) {
 
 void SpaceRenderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
+
+	sceneTime += dt;
+
+	Vector3 orbitPos = sunOrbit->CalculateRelativePosition();
+	sunTransform = Matrix4::Translation(orbitPos) * 
+		Matrix4::Scale(Vector3(radius / 10, radius / 10, radius / 10)) * 
+		Matrix4::Rotation((sceneTime * 50.0f), Vector3(0, 1, 0));
+
+	sunLight->SetPosition(orbitPos + Vector3(0, 0, -500.0f));
 }
 
 void SpaceRenderer::RenderScene() {
@@ -131,7 +146,7 @@ void SpaceRenderer::FillBuffers() {
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 	viewMatrix = camera->BuildViewMatrix();
-	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+	projMatrix = Matrix4::Perspective(1.0f, 30000.0f, (float)width / (float)height, 45.0f);
 
 	DrawSkybox();
 
@@ -150,6 +165,22 @@ void SpaceRenderer::FillBuffers() {
 	UpdateShaderMatrices();
 
 	sphere->Draw();
+
+
+
+	BindShader(sunShader);
+	glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "diffuseTex"), 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, sunTex);
+
+	glUniform4fv(glGetUniformLocation(sunShader->GetProgram(), "nodeColour"), 1, (float*)&Vector4(1,1,1,1));
+	glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "useTexture"), 100);
+
+	modelMatrix = sunTransform;
+	UpdateShaderMatrices();
+	sphere->Draw();
+
+
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -186,6 +217,9 @@ void SpaceRenderer::DrawPointLights() {
 		SetShaderLight(l);
 		sphere->Draw();
 	}
+
+	SetShaderLight(*sunLight);
+	sphere->Draw();
 
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glCullFace(GL_BACK);

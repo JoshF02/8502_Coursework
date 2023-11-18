@@ -1,5 +1,6 @@
 #pragma once
 #include "../nclgl/OGLRenderer.h"
+#include "Orbit.h"
 
 class Camera;
 class Mesh;
@@ -44,4 +45,11 @@ protected:
 	GLuint earthBump;
 
 	float radius;
+	float sceneTime;
+
+	Orbit* sunOrbit;
+	GLuint sunTex;
+	Matrix4 sunTransform;
+	Shader* sunShader;
+	Light* sunLight;
 };

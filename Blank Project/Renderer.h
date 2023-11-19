@@ -71,9 +71,14 @@ protected:
 	Shader* processSceneShader; // might not need
 	GLuint bufferFBO;
 	GLuint processFBO;
-	GLuint bufferColourTex[2];
+	GLuint bufferBrightTex[2];
 	GLuint bufferDepthTex;
+
+	GLuint bufferColourTex;
 	bool postEnabled;
+	Shader* bloomBufferShader;
+	Shader* simpleTexturedShader;
+	//void BloomBufferHandling();
 
 
 	void DrawShadowScene();

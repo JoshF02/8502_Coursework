@@ -163,6 +163,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex || !bufferColourTex[0]) return;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glEnable(GL_DEPTH_TEST);
 
 	postEnabled = false;
 
@@ -326,45 +327,31 @@ int Renderer::ApplyFloatingMovement(SceneNode* n, int count) {
 
 void Renderer::RenderScene() {
 	if (postEnabled) {
+		DrawShadowScene();
 		glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+		projMatrix = Matrix4::Perspective(1.0f, 25000.0f, (float)width / (float)height, 45.0f);
 		DrawSkybox();
+		//DrawShadowScene();
 		DrawNode(root);	
 		DrawWater();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		//DrawScene();
-
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		// NOTES ON BROKEN PPROCESSING
-		// - skybox mostly works but looks weird
-		// - terrain doesnt appear at all
-		// - water makes the processing texture solid colour
+		// - skybox and terrain now work - fix was setting proj matrix above, as it gets reset by pprocess funcs
+		// - water now works - fix was resetting texture matrix in pprocess func, as it is set to something in water func
+		// - shadows now work - fix was drawing them before setting pprocess buffers, as they use their own buffer so it interferred
+		// - also moved shadow drawing earlier on non pprocess rendering, to fix skybox flicker when toggling pprocessing
 		DrawPostProcess();
 		PresentScene();
 	}
 	else {
+		DrawShadowScene();
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		DrawSkybox();
-		DrawShadowScene();
 		DrawNode(root);
 		DrawWater();
 	}
-}
-
-
-void Renderer::DrawScene() {	// POSTPROCESSING FUNCTION, USING FOR TESTING
-	//glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
-	//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-	BindShader(processSceneShader);
-	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
-	UpdateShaderMatrices();
-	glUniform1i(glGetUniformLocation(processSceneShader->GetProgram(), "diffuseTex"), 0);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, earthTex);
-	heightMap->Draw();
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 
@@ -554,6 +541,7 @@ void Renderer::DrawPostProcess() {
 	modelMatrix.ToIdentity();
 	viewMatrix.ToIdentity();
 	projMatrix.ToIdentity();
+	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
 	glDisable(GL_DEPTH_TEST);
@@ -617,7 +605,7 @@ void Renderer::DrawShadowScene() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	viewMatrix = camera->BuildViewMatrix();	// RESET VIEW AND PROJ MATRIX
-	projMatrix = Matrix4::Perspective(1.0f, 15000.0f, (float)width / (float)height, 45.0f);
+	projMatrix = Matrix4::Perspective(1.0f, 25000.0f, (float)width / (float)height, 45.0f);
 }
 
 

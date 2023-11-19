@@ -75,10 +75,8 @@ protected:
 	GLuint bufferDepthTex;
 
 	GLuint bufferColourTex;
-	bool postEnabled;
-	Shader* bloomBufferShader;
-	Shader* simpleTexturedShader;
-	//void BloomBufferHandling();
+	//int postEnabled;	// 0 = disabled, 1 = blur, 2 = bloom
+	bool bloomEnabled;
 
 
 	void DrawShadowScene();

@@ -75,8 +75,9 @@ protected:
 	GLuint bufferDepthTex;
 
 	GLuint bufferColourTex;
-	//int postEnabled;	// 0 = disabled, 1 = blur, 2 = bloom
 	bool bloomEnabled;
+	bool blurEnabled;
+	Shader* bloomShader;
 
 
 	void DrawShadowScene();
@@ -86,9 +87,6 @@ protected:
 	float sceneTime;
 	Shader* shadowSceneShader;
 	Shader* shadowShader;
-	//vector<Mesh*> sceneMeshes;
-	//vector<Matrix4> sceneTransforms;
-	//SceneNode* shadowMeshesNode;
 
 	Vector3 heightmapSize;
 

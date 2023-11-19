@@ -39,7 +39,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	heightmapSize = heightMap->GetHeightmapSize();
 
-	//camera = new Camera(-45.0f, 0.0f, heightmapSize * Vector3(0.5f, 5.0f, 0.5f), heightmapSize);
 	camera = new Camera(-20, 0, (heightmapSize * Vector3(1.0f, 5.0f, 1.0f)) + Vector3(heightmapSize.x / 2, 0, heightmapSize.x / 2), heightmapSize);
 	camAutoHasStarted = false;
 	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 4);	// POINT LIGHT
@@ -130,7 +129,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	processQuad = Mesh::GenerateQuad();	// POST PROCESSING
 	processShader = new Shader("TexturedVertex.glsl", "ProcessFrag.glsl");
 	processSceneShader = new Shader("TexturedVertex.glsl", "/Coursework/CWProcessSceneFrag.glsl");
-	if (!processShader->LoadSuccess() || !processSceneShader->LoadSuccess()) {
+	bloomShader = new Shader("TexturedVertex.glsl", "/Coursework/CWBloomFrag.glsl");
+	if (!processShader->LoadSuccess() || !processSceneShader->LoadSuccess() || !bloomShader->LoadSuccess()) {
 		return;
 	}
 
@@ -181,7 +181,6 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
 
-	//postEnabled = 0;
 	bloomEnabled = false;
 
 
@@ -297,18 +296,18 @@ void Renderer::UpdateScene(float dt) {
 	npcNode->SetCurrentFrame(currentFrame);
 
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_P)) {
-		//postEnabled = 2;
 		bloomEnabled = true;
+		blurEnabled = false;
 	}
 
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_O)) {
-		//postEnabled = 1;
 		bloomEnabled = false;
+		blurEnabled = true;
 	}
 
 	if (Window::GetKeyboard()->KeyDown(KEYBOARD_I)) {
-		//postEnabled = 0;
 		bloomEnabled = false;
+		blurEnabled = false;
 	}
 
 
@@ -350,16 +349,14 @@ int Renderer::ApplyFloatingMovement(SceneNode* n, int count) {
 }
 
 void Renderer::RenderScene() {
-	if (bloomEnabled) {//postEnabled > 0) {
+	if (bloomEnabled || blurEnabled) {
 		DrawShadowScene();
 		glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 		projMatrix = Matrix4::Perspective(1.0f, 25000.0f, (float)width / (float)height, 45.0f);
 		DrawSkybox();
-		//DrawShadowScene();
 		DrawNode(root);	
 		DrawWater();
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		DrawPostProcess();
 		PresentScene();
@@ -384,8 +381,6 @@ void Renderer::DrawSkybox() {
 	BindShader(skyboxShader);
 	UpdateShaderMatrices();
 
-	glUniform1i(glGetUniformLocation(skyboxShader->GetProgram(), "postEnabled"), bloomEnabled);
-
 	quad->Draw();
 	glDepthMask(GL_TRUE);
 }
@@ -398,8 +393,6 @@ void Renderer::DrawWater() {
 
 	SetTexture(waterTex, 0, "diffuseTex", reflectShader, GL_TEXTURE_2D);
 	SetTexture(cubeMap, 2, "cubeTex", reflectShader, GL_TEXTURE_CUBE_MAP);
-
-	glUniform1i(glGetUniformLocation(reflectShader->GetProgram(), "postEnabled"), bloomEnabled);
 
 	Vector3 hSize = heightMap->GetHeightmapSize();
 	float scaleFac = terrain->GetModelScale().x;	// scales water size with terrain size
@@ -421,7 +414,7 @@ void Renderer::DrawNode(SceneNode* n) {
 			SetShaderLight(*light);
 
 			glUniform1i(glGetUniformLocation(npcShader->GetProgram(), "diffuseTex"), 0);
-			glUniform1i(glGetUniformLocation(npcShader->GetProgram(), "postEnabled"), bloomEnabled);
+			
 			UpdateShaderMatrices();
 
 			Matrix4 model = n->GetWorldTransform() * Matrix4::Scale(n->GetModelScale());
@@ -480,8 +473,6 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			glUniform1i(glGetUniformLocation(shadowSceneShader->GetProgram(), "useTexture"), 0);
 
-			glUniform1i(glGetUniformLocation(shadowSceneShader->GetProgram(), "postEnabled"), bloomEnabled);
-
 			n->Draw(*this);
 		}
 		else if (n == orbitSunNode) {
@@ -497,8 +488,6 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			nodeTex = n->GetTexture();
 			glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "useTexture"), nodeTex);
-
-			glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "postEnabled"), bloomEnabled);
 
 			n->Draw(*this); 
 		}
@@ -516,8 +505,6 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			nodeTex = n->GetTexture();
 			glUniform1i(glGetUniformLocation(simpleLitShader->GetProgram(), "useTexture"), nodeTex);
-
-			glUniform1i(glGetUniformLocation(simpleLitShader->GetProgram(), "postEnabled"), bloomEnabled);
 
 			if (n->meshIsComplex) {
 				for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)	
@@ -563,9 +550,62 @@ bool Renderer::SetTexture(GLuint texID, GLuint unit, const std::string& uniformN
 
 
 void Renderer::DrawPostProcess() {
+	// - buffercolourtex is empty (greyscale) - DONE
+	// - need it to contain full colour frame before blur - DONE
+	// 
+	// - need bufferbrightex to be set to bright frags only before blur
+	// - that way bufferbrighttex[0] output in presentscene will be blurred bright frags
+	// - blend this with buffercolourtex for final image
+
+
+
+	//bufferColourTex = bufferBrightTex[0]; // doesnt work - needs to be a copy of it
+	//glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+	
+	// this is for framebuffers not textures
+	//glBlitNamedFramebuffer(bufferBrightTex[0], bufferColourTex, 0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+	BindShader(bloomShader);
+	modelMatrix.ToIdentity();
+	viewMatrix.ToIdentity();
+	projMatrix.ToIdentity();
+	textureMatrix.ToIdentity();
+	UpdateShaderMatrices();
+	glDisable(GL_DEPTH_TEST);
+
+	SetTexture(bufferBrightTex[0], 0, "diffuseTex", bloomShader, GL_TEXTURE_2D);
+	processQuad->Draw();
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glEnable(GL_DEPTH_TEST);
+
+
+	// then write it back to 0
+	/*glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
+	//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+	BindShader(simpleTexShader);
+	modelMatrix.ToIdentity();
+	viewMatrix.ToIdentity();
+	projMatrix.ToIdentity();
+	textureMatrix.ToIdentity();
+	UpdateShaderMatrices();
+	glDisable(GL_DEPTH_TEST);
+
+	SetTexture(bufferBrightTex[1], 0, "diffuseTex", simpleTexShader, GL_TEXTURE_2D);
+	processQuad->Draw();
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glEnable(GL_DEPTH_TEST);*/
+
+
+
+
+	glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	BindShader(processShader);
 	modelMatrix.ToIdentity();
@@ -579,17 +619,23 @@ void Renderer::DrawPostProcess() {
 	glActiveTexture(GL_TEXTURE0);
 	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "sceneTex"), 0);
 	for (int i = 0; i < POST_PASSES; ++i) {
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
-		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
 
-		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[0]);
-		processQuad->Draw();
-
-		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
+		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
 		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[1]);
 		processQuad->Draw();
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
+		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
+		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[0]);
+		processQuad->Draw();
 	}
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
+	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
+	glBindTexture(GL_TEXTURE_2D, bufferBrightTex[1]);
+	processQuad->Draw();
+
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
 }
@@ -602,14 +648,10 @@ void Renderer::PresentScene() {
 	viewMatrix.ToIdentity();
 	projMatrix.ToIdentity();
 	UpdateShaderMatrices();
-	//glActiveTexture(GL_TEXTURE0);
-	//glBindTexture(GL_TEXTURE_2D, bufferBrightTex[0]);
-	//glUniform1i(glGetUniformLocation(processSceneShader->GetProgram(), "diffuseTex"), 0);
+
 	SetTexture(bufferBrightTex[0], 0, "diffuseTex", processSceneShader, GL_TEXTURE_2D);
 
 	SetTexture(bufferColourTex, 1, "differentTex", processSceneShader, GL_TEXTURE_2D);
-
-	glUniform1i(glGetUniformLocation(processSceneShader->GetProgram(), "postEnabled"), bloomEnabled);
 
 	processQuad->Draw();
 }

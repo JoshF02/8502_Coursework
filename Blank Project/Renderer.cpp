@@ -130,7 +130,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	processShader = new Shader("TexturedVertex.glsl", "ProcessFrag.glsl");
 	processSceneShader = new Shader("TexturedVertex.glsl", "/Coursework/CWProcessSceneFrag.glsl");
 	bloomShader = new Shader("TexturedVertex.glsl", "/Coursework/CWBloomFrag.glsl");
-	if (!processShader->LoadSuccess() || !processSceneShader->LoadSuccess() || !bloomShader->LoadSuccess()) {
+	simpleTexShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
+	if (!processShader->LoadSuccess() || !processSceneShader->LoadSuccess() || !bloomShader->LoadSuccess() || !simpleTexShader->LoadSuccess()) {
 		return;
 	}
 
@@ -182,6 +183,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glEnable(GL_DEPTH_TEST);
 
 	bloomEnabled = false;
+	blurEnabled = false;
 
 
 
@@ -550,91 +552,67 @@ bool Renderer::SetTexture(GLuint texID, GLuint unit, const std::string& uniformN
 
 
 void Renderer::DrawPostProcess() {
-	// - buffercolourtex is empty (greyscale) - DONE
-	// - need it to contain full colour frame before blur - DONE
-	// 
-	// - need bufferbrightex to be set to bright frags only before blur
-	// - that way bufferbrighttex[0] output in presentscene will be blurred bright frags
-	// - blend this with buffercolourtex for final image
-
-
-
-	//bufferColourTex = bufferBrightTex[0]; // doesnt work - needs to be a copy of it
-	//glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
 	
-	// this is for framebuffers not textures
-	//glBlitNamedFramebuffer(bufferBrightTex[0], bufferColourTex, 0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
 	glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-	BindShader(bloomShader);
 	modelMatrix.ToIdentity();
 	viewMatrix.ToIdentity();
 	projMatrix.ToIdentity();
-	textureMatrix.ToIdentity();
-	UpdateShaderMatrices();
 	glDisable(GL_DEPTH_TEST);
 
-	SetTexture(bufferBrightTex[0], 0, "diffuseTex", bloomShader, GL_TEXTURE_2D);
-	processQuad->Draw();
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glEnable(GL_DEPTH_TEST);
+	if (bloomEnabled) {	// draws bright frags to bufferBrightTex[1] for bloom
+		//glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+		BindShader(bloomShader);
+		//modelMatrix.ToIdentity();
+		//viewMatrix.ToIdentity();
+		//projMatrix.ToIdentity();
+		textureMatrix.ToIdentity();
+		UpdateShaderMatrices();
+		//glDisable(GL_DEPTH_TEST);
 
-	// then write it back to 0
-	/*glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
-	//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		SetTexture(bufferBrightTex[0], 0, "diffuseTex", bloomShader, GL_TEXTURE_2D);
+		processQuad->Draw();
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glEnable(GL_DEPTH_TEST);
+	}
 
-	BindShader(simpleTexShader);
-	modelMatrix.ToIdentity();
-	viewMatrix.ToIdentity();
-	projMatrix.ToIdentity();
-	textureMatrix.ToIdentity();
-	UpdateShaderMatrices();
-	glDisable(GL_DEPTH_TEST);
-
-	SetTexture(bufferBrightTex[1], 0, "diffuseTex", simpleTexShader, GL_TEXTURE_2D);
-	processQuad->Draw();
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glEnable(GL_DEPTH_TEST);*/
-
-
-
-
-	glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+	//glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	BindShader(processShader);
-	modelMatrix.ToIdentity();
-	viewMatrix.ToIdentity();
-	projMatrix.ToIdentity();
+	//modelMatrix.ToIdentity();
+	//viewMatrix.ToIdentity();
+	//projMatrix.ToIdentity();
 	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
-	glDisable(GL_DEPTH_TEST);
+	//glDisable(GL_DEPTH_TEST);
 
 	glActiveTexture(GL_TEXTURE0);
 	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "sceneTex"), 0);
-	for (int i = 0; i < POST_PASSES; ++i) {
 
+	if (bloomEnabled) {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
 		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
 		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[1]);
 		processQuad->Draw();
-
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
-		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
-		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[0]);
-		processQuad->Draw();
 	}
 
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
-	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
-	glBindTexture(GL_TEXTURE_2D, bufferBrightTex[1]);
-	processQuad->Draw();
+	for (int i = 0; i < POST_PASSES; ++i) {
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
+		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
+		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[0]);
+		processQuad->Draw();
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
+		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
+		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[1]);
+		processQuad->Draw();
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
@@ -652,6 +630,8 @@ void Renderer::PresentScene() {
 	SetTexture(bufferBrightTex[0], 0, "diffuseTex", processSceneShader, GL_TEXTURE_2D);
 
 	SetTexture(bufferColourTex, 1, "differentTex", processSceneShader, GL_TEXTURE_2D);
+
+	glUniform1i(glGetUniformLocation(processSceneShader->GetProgram(), "bloomEnabled"), bloomEnabled);
 
 	processQuad->Draw();
 }

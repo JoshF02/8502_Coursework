@@ -78,6 +78,7 @@ protected:
 	bool bloomEnabled;
 	bool blurEnabled;
 	Shader* bloomShader;
+	Shader* simpleTexShader;
 
 
 	void DrawShadowScene();

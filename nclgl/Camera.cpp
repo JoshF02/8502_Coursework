@@ -57,7 +57,7 @@ void Camera::UpdateCamera(float dt)
 				xpos = false;
 			}
 		}
-		yaw += 0.1;
+		yaw += 0.4;	// was 0.1 but for fullscreen needs to be faster
 	}
 	else {
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_W)) {

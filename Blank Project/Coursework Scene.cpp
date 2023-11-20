@@ -4,7 +4,7 @@
 #include "../nclgl/OGLRenderer.h"
 
 int main()	{
-	Window w("Coursework Scene", 1280, 720, false);	// bool sets fullscreen
+	Window w("Coursework Scene", 1920, 1080, true);	// bool sets fullscreen
 
 	if(!w.HasInitialised()) {
 		return -1;

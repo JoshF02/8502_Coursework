@@ -334,6 +334,8 @@ void Renderer::UpdateScene(float dt) {
 
 
 	root->Update(dt);
+
+	//std::cout << 1 / dt << "\n";	// outputs fps
 }
 
 int Renderer::ApplyFloatingMovement(SceneNode* n, int count) {

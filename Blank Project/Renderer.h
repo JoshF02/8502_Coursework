@@ -55,20 +55,18 @@ protected:
 	float frameTime;
 	GLuint nodeTex;
 
-	//Shader* matShader;
 	Mesh* shipMesh;
-	GLuint shipTexture;	// remove once i get mat working
+	GLuint shipTexture;	
 	MeshMaterial* shipMat;
 	vector<GLuint> shipMatTextures;
 
 
 	void PresentScene();
 	void DrawPostProcess();
-	void DrawScene();	// only using for testing - comparing to my scene drawing
 
 	Mesh* processQuad;
 	Shader* processShader;
-	Shader* processSceneShader; // might not need
+	Shader* processSceneShader; 
 	GLuint bufferFBO;
 	GLuint processFBO;
 	GLuint bufferBrightTex[2];
@@ -78,7 +76,6 @@ protected:
 	bool bloomEnabled;
 	bool blurEnabled;
 	Shader* bloomShader;
-	Shader* simpleTexShader;
 
 
 	void DrawShadowScene();
@@ -105,4 +102,8 @@ protected:
 	int ApplyFloatingMovement(SceneNode* n, int count);
 
 	bool camAutoHasStarted;
+
+	GLuint solidRed;
+
+	SceneNode* floatingGlowingOrb;
 };

@@ -7,7 +7,7 @@
 #include "../nclgl/MeshMaterial.h"
 #include "../nclgl/MeshAnimation.h"
 
-const int POST_PASSES = 10;
+const int POST_PASSES = 100;	// more passes = stronger blur
 #define SHADOWSIZE 2048
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
@@ -39,7 +39,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	heightmapSize = heightMap->GetHeightmapSize();
 
-	camera = new Camera(-20, 0, (heightmapSize * Vector3(1.0f, 5.0f, 1.0f)) + Vector3(heightmapSize.x / 2, 0, heightmapSize.x / 2), heightmapSize);
+	camera = new Camera(0, 0, (heightmapSize * Vector3(1.0f, 5.0f, 1.0f)) + Vector3(heightmapSize.x / 2, 0, heightmapSize.x / 2), heightmapSize);
 	camAutoHasStarted = false;
 	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 4);	// POINT LIGHT
 	light->SetInitialRadius();
@@ -84,7 +84,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	npcNode = new SceneNode();
 	npcNode->SetColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
-	npcNode->SetTransform(Matrix4::Translation(heightmapSize * Vector3(0.6f, 0.4f, 0.45f)));
+	npcNode->SetTransform(Matrix4::Translation(heightmapSize * 2 * Vector3(0.6f, 0.4f, 0.45f)));
 	npcNode->SetModelScale(Vector3(300.0f, 300.0f, 300.0f));
 	npcNode->SetMesh(npc);
 	npcNode->SetAniTexture(npcMatTextures);
@@ -114,7 +114,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	for (int i = 1; i < 4; ++i)
 	{
 		SceneNode* s = new SceneNode(shipMesh, Vector4(1,1,1,1), true);	// mesh is complex
-		s->SetTransform(Matrix4::Translation(heightmapSize * Vector3(0.2f * i, 2.0f, 0.08f * i)));
+		s->SetTransform(Matrix4::Translation(heightmapSize * 2 * Vector3((0.62f / i) + 0.14f , 2.0f + (0.02f * i), (0.18f * i) + 0.15f)) *
+		Matrix4::Rotation(30.0f * i * i, Vector3(0, 1, 0)));
 		s->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
 		s->SetBoundingRadius(50.0f);
 		s->SetTexture(shipTexture);
@@ -130,8 +131,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	processShader = new Shader("TexturedVertex.glsl", "ProcessFrag.glsl");
 	processSceneShader = new Shader("TexturedVertex.glsl", "/Coursework/CWProcessSceneFrag.glsl");
 	bloomShader = new Shader("TexturedVertex.glsl", "/Coursework/CWBloomFrag.glsl");
-	simpleTexShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
-	if (!processShader->LoadSuccess() || !processSceneShader->LoadSuccess() || !bloomShader->LoadSuccess() || !simpleTexShader->LoadSuccess()) {
+	if (!processShader->LoadSuccess() || !processSceneShader->LoadSuccess() || !bloomShader->LoadSuccess()) {
 		return;
 	}
 
@@ -214,11 +214,12 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	
 	// static sphere for testing
-	SceneNode* test = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
-	test->SetTransform(Matrix4::Translation(Vector3(heightmapSize.x / 2, 1000.0f, heightmapSize.z / 2) * terrain->GetModelScale().x));
-	test->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
-	test->SetTexture(earthTex);
-	terrain->AddChild(test);
+	solidRed = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/solid_red2.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	floatingGlowingOrb = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
+	floatingGlowingOrb->SetTransform(Matrix4::Translation(Vector3(heightmapSize.x / 2, 1000.0f, heightmapSize.z / 2) * terrain->GetModelScale().x));
+	floatingGlowingOrb->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
+	floatingGlowingOrb->SetTexture(solidRed);
+	terrain->AddChild(floatingGlowingOrb);
 
 
 	sceneTime = 0.0f;
@@ -477,7 +478,7 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			n->Draw(*this);
 		}
-		else if (n == orbitSunNode) {
+		else if (n == orbitSunNode || n == floatingGlowingOrb) {
 			BindShader(sunShader);
 			SetTexture(n->GetTexture(), 0, "diffuseTex", sunShader, GL_TEXTURE_2D);
 			UpdateShaderMatrices();
@@ -560,41 +561,27 @@ void Renderer::DrawPostProcess() {
 	glDisable(GL_DEPTH_TEST);
 
 	if (bloomEnabled) {	// draws bright frags to bufferBrightTex[1] for bloom
-		//glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 		BindShader(bloomShader);
-		//modelMatrix.ToIdentity();
-		//viewMatrix.ToIdentity();
-		//projMatrix.ToIdentity();
 		textureMatrix.ToIdentity();
 		UpdateShaderMatrices();
-		//glDisable(GL_DEPTH_TEST);
-
 		SetTexture(bufferBrightTex[0], 0, "diffuseTex", bloomShader, GL_TEXTURE_2D);
 		processQuad->Draw();
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//glEnable(GL_DEPTH_TEST);
 	}
 
-	//glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
-	//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
 	BindShader(processShader);
-	//modelMatrix.ToIdentity();
-	//viewMatrix.ToIdentity();
-	//projMatrix.ToIdentity();
 	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
 
-	//glDisable(GL_DEPTH_TEST);
 
 	glActiveTexture(GL_TEXTURE0);
 	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "sceneTex"), 0);
 
-	if (bloomEnabled) {
+	if (bloomEnabled) {	// draws bright frags back to bufferBrightTex[0] ready for blurring
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
 		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
 		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[1]);

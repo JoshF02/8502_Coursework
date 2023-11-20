@@ -4,18 +4,18 @@
 #include "../nclgl/OGLRenderer.h"
 
 int main()	{
-	Window w("Coursework Scene", 1280, 720, false);
+	Window w("Coursework Scene", 1280, 720, false);	// bool sets fullscreen
 
 	if(!w.HasInitialised()) {
 		return -1;
 	}
 	
-	OGLRenderer* renderer = new SpaceRenderer(w);	// careful with performance - renderer created on heap not stack
+	OGLRenderer* renderer = new Renderer(w);	// careful with performance - renderer created on heap not stack
 	if(!(*renderer).HasInitialised()) {
 		return -1;
 	}
 
-	bool useSpaceRenderer = true;
+	bool useSpaceRenderer = false;
 
 	w.LockMouseToWindow(true);
 	w.ShowOSPointer(false);

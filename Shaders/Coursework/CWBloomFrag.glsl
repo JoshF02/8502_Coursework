@@ -13,7 +13,7 @@ void main(void) {
 
 	float brightness = dot(val.rgb, vec3(0.2126, 0.7152, 0.0722));
 	
-	if (brightness > 0.4)
+	if (brightness > 0.6)
 		fragColour = vec4(val.rgb, 1.0);
 
 	else 

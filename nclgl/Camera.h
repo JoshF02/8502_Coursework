@@ -37,7 +37,7 @@ public:
 		automated = true;
 		position = (heightmapSize * Vector3(1.0f, 5.0f, 1.0f)) + Vector3(halfHMSize, 0, halfHMSize);
 		yaw = 0;
-		pitch = -20;
+		pitch = 0;
 		zneg = true;
 		zpos = false;
 		xpos = false;

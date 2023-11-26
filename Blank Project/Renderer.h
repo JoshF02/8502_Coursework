@@ -104,7 +104,10 @@ protected:
 
 	bool camAutoHasStarted;
 
-	GLuint solidRed;
+	//GLuint solidRed;
 
 	SceneNode* floatingGlowingOrb;
+	SceneNode* floatingGlowingOrb2;
+
+	Light* pointLights[2];
 };

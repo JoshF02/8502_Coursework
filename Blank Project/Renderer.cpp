@@ -215,13 +215,27 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	
-	// static sphere for testing
-	solidRed = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/solid_red2.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+
+
+	// Point lights for glowing orbs
+	pointLights[0] = new Light(heightmapSize * Vector3(0.25f, 0.025f, 0.25f), Vector4(1, 1, 0, 1), heightmapSize.x / 2);
+	pointLights[1] = new Light(heightmapSize * Vector3(1.75f, 0.025f, 1.75f), Vector4(0, 1, 1, 1), heightmapSize.x / 2);
+
+	// Glowing orbs
+	//solidRed = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/solid_red2.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	floatingGlowingOrb = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
-	floatingGlowingOrb->SetTransform(Matrix4::Translation(Vector3(heightmapSize.x / 2, 1000.0f, heightmapSize.z / 2) * terrain->GetModelScale().x));
+	floatingGlowingOrb->SetTransform(Matrix4::Translation(Vector3(0.25f, 3.0f, 0.25f) * heightmapSize));
 	floatingGlowingOrb->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
-	floatingGlowingOrb->SetTexture(solidRed);
+	//floatingGlowingOrb->SetTexture(solidRed);
+	floatingGlowingOrb->SetColour(Vector4(1, 1, 0, 1));
 	terrain->AddChild(floatingGlowingOrb);
+
+	floatingGlowingOrb2 = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
+	floatingGlowingOrb2->SetTransform(Matrix4::Translation(Vector3(1.75f, 3.0f, 1.75f) * heightmapSize));
+	floatingGlowingOrb2->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
+	//floatingGlowingOrb2->SetTexture(solidRed);
+	floatingGlowingOrb2->SetColour(Vector4(0, 1, 1, 1));
+	terrain->AddChild(floatingGlowingOrb2);
 
 
 	sceneTime = 0.0f;
@@ -244,6 +258,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	orbitSunNode->SetTransform(Matrix4::Translation(sunRelativePosition));
 	orbitSunNode->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
 	orbitSunNode->SetTexture(sunTex);
+	orbitSunNode->SetColour(Vector4(1, 1, 0, 1));
 	terrainCentreNode->AddChild(orbitSunNode);
 
 	orbit = new Orbit(0.0f, terrainCentrePos, sunRelativePosition + terrainCentrePos, 0.05f);
@@ -466,6 +481,15 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			BindShader(shadowSceneShader);
 			SetShaderLight(*light);
+			
+			glUniform3fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "light2Pos"), 1, (float*)&(*pointLights[0]).GetPosition());
+			glUniform4fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "light2Colour"), 1, (float*)&(*pointLights[0]).GetColour());
+			glUniform1f(glGetUniformLocation(shadowSceneShader->GetProgram(), "light2Radius"), (*pointLights[0]).GetRadius());
+
+			glUniform3fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "light3Pos"), 1, (float*)&(*pointLights[1]).GetPosition());
+			glUniform4fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "light3Colour"), 1, (float*)&(*pointLights[1]).GetColour());
+			glUniform1f(glGetUniformLocation(shadowSceneShader->GetProgram(), "light3Radius"), (*pointLights[1]).GetRadius());
+
 			glUniform3fv(glGetUniformLocation(shadowSceneShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
 			SetTexture(earthTex, 0, "diffuseTex", shadowSceneShader, GL_TEXTURE_2D);
@@ -486,7 +510,7 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			n->Draw(*this);
 		}
-		else if (n == orbitSunNode || n == floatingGlowingOrb) {
+		else if (n == orbitSunNode || n == floatingGlowingOrb || n == floatingGlowingOrb2) {
 			BindShader(sunShader);
 			SetTexture(n->GetTexture(), 0, "diffuseTex", sunShader, GL_TEXTURE_2D);
 			UpdateShaderMatrices();
@@ -497,8 +521,8 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			glUniform3fv(glGetUniformLocation(sunShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-			nodeTex = n->GetTexture();
-			glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "useTexture"), nodeTex);
+			//nodeTex = n->GetTexture();
+			glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "useTexture"), 0);	// SETS TO 0 - USE COLOUR NOT TEXTURE
 
 			n->Draw(*this); 
 		}

@@ -11,9 +11,30 @@ const int POST_PASSES = 100;	// more passes = stronger blur
 #define SHADOWSIZE 2048
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
-	quad = Mesh::GenerateQuad();
 
+	// Shaders
+	reflectShader = new Shader("ReflectVertex.glsl", "/Coursework/CWReflectFragment.glsl");
+	skyboxShader = new Shader("SkyboxVertex.glsl", "/Coursework/CWSkyboxFragment.glsl");
+	npcShader = new Shader("/Coursework/CWLitSkinningVertex.glsl", "PerPixelFragment.glsl");
+	processShader = new Shader("TexturedVertex.glsl", "ProcessFrag.glsl");
+	processSceneShader = new Shader("TexturedVertex.glsl", "/Coursework/CWProcessSceneFrag.glsl");
+	bloomShader = new Shader("TexturedVertex.glsl", "/Coursework/CWBloomFrag.glsl");
+	shadowSceneShader = new Shader("ShadowSceneVert.glsl", "ShadowSceneFrag.glsl");
+	shadowShader = new Shader("ShadowVert.glsl", "ShadowFrag.glsl");
+	simpleLitShader = new Shader("PerPixelVertex.glsl", "PerPixelFragment.glsl");
+	sunShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
+	if (!reflectShader->LoadSuccess() || !skyboxShader->LoadSuccess() || !npcShader->LoadSuccess() || !processShader->LoadSuccess() || 
+		!processSceneShader->LoadSuccess() || !bloomShader->LoadSuccess() || !shadowSceneShader->LoadSuccess() || 
+		!shadowShader->LoadSuccess() || !simpleLitShader->LoadSuccess() || !sunShader->LoadSuccess()) {
+		return;
+	}
+
+
+
+	// Terrain and Scene Graph
+	quad = Mesh::GenerateQuad();
 	heightMap = new HeightMap(TEXTUREDIR"/Coursework/TestHM2.png");
+	heightmapSize = heightMap->GetHeightmapSize();
 
 	waterTex = SOIL_load_OGL_texture(TEXTUREDIR"water.TGA", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	earthTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/rock_boulder_dry_diff_1k.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
@@ -30,40 +51,29 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(earthBump, true);
 	SetTextureRepeating(waterTex, true);
 
-	reflectShader = new Shader("ReflectVertex.glsl", "/Coursework/CWReflectFragment.glsl");
-	skyboxShader = new Shader("SkyboxVertex.glsl", "/Coursework/CWSkyboxFragment.glsl");
-
-	if (!reflectShader->LoadSuccess() || !skyboxShader->LoadSuccess()) {
-		return;
-	}
-
-	heightmapSize = heightMap->GetHeightmapSize();
-
-	camera = new Camera(0, 0, (heightmapSize * Vector3(1.0f, 5.0f, 1.0f)) + Vector3(heightmapSize.x / 2, 0, heightmapSize.x / 2), heightmapSize);
-	camAutoHasStarted = false;
-	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 4);	// POINT LIGHT
-	light->SetInitialRadius();
-
-	projMatrix = Matrix4::Perspective(1.0f, 25000.0f, (float)width / (float)height, 45.0f);
-
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-	waterRotate = 0.0f;
-	waterCycle = 0.0f;
-
-
-	root = new SceneNode();	// SCENE GRAPH FUNCTIONALITY
+	root = new SceneNode();
 	terrain = new SceneNode();
 	terrain->SetMesh(heightMap);
 	terrain->SetModelScale(Vector3(2.0, 2.0, 2.0));
 	root->AddChild(terrain);
 
+	waterRotate = 0.0f;
+	waterCycle = 0.0f;
 
 
-	npc = Mesh::LoadFromMeshFile("/Coursework/Monster_Crab.msh");	// ANIMATED CHARACTER
-	npcShader = new Shader("/Coursework/CWLitSkinningVertex.glsl", "PerPixelFragment.glsl");
+
+	// Camera and Sun Light
+	camera = new Camera(0, 0, (heightmapSize * Vector3(1.0f, 5.0f, 1.0f)) + Vector3(heightmapSize.x / 2, 0, heightmapSize.x / 2), heightmapSize);
+	camAutoHasStarted = false;
+	projMatrix = Matrix4::Perspective(1.0f, 25000.0f, (float)width / (float)height, 45.0f);
+
+	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 4);	// POINT LIGHT
+	light->SetInitialRadius();
+
+
+	
+	// Animated NPC Character (Crab)
+	npc = Mesh::LoadFromMeshFile("/Coursework/Monster_Crab.msh");
 	anim = new MeshAnimation("/Coursework/Monster_Crab.anm");
 	npcMat = new MeshMaterial("/Coursework/Monster_Crab.mat");
 
@@ -96,7 +106,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// REMEMBER TO CHANGE BACK TO SHIP MESH, CHANGE ISCOMPLEX TO TRUE
 
-	shipMesh = Mesh::LoadFromMeshFile("/Coursework/cliff.msh");	// STATIC MESHES
+	// Ship Meshes
+	shipMesh = Mesh::LoadFromMeshFile("/Coursework/cliff.msh");
 	shipMat = new MeshMaterial("/Coursework/Rock.mat");	// change to w/interior for submission, but loads slow
 	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/muddy+terrain.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
@@ -121,21 +132,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		s->SetBoundingRadius(50.0f);
 		s->SetTexture(shipTexture);
 		s->SetOriginalTransform();
-		//s->SetColour(Vector4(0, 1, 0, 1));	// colours the texture, can remove
 		root->AddChild(s);
 	}
 
 
 
-
-	processQuad = Mesh::GenerateQuad();	// POST PROCESSING
-	processShader = new Shader("TexturedVertex.glsl", "ProcessFrag.glsl");
-	processSceneShader = new Shader("TexturedVertex.glsl", "/Coursework/CWProcessSceneFrag.glsl");
-	bloomShader = new Shader("TexturedVertex.glsl", "/Coursework/CWBloomFrag.glsl");
-	if (!processShader->LoadSuccess() || !processSceneShader->LoadSuccess() || !bloomShader->LoadSuccess()) {
-		return;
-	}
-
+	// Post Processing
+	processQuad = Mesh::GenerateQuad();	
+	
 	//Scene Depth Texture
 	glGenTextures(1, &bufferDepthTex);
 	glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
@@ -145,7 +149,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
 
-	//Bright Texture (for bloom)
+	//Bright Texture (For Bloom)
 	for (int i = 0; i < 2; ++i) {
 		glGenTextures(1, &bufferBrightTex[i]);
 		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[i]);
@@ -174,14 +178,17 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, bufferDepthTex, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
 
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, bufferColourTex, 0);	// extra code to draw to new colour tex
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, bufferColourTex, 0);	
 	GLenum buffers[2] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, buffers);
+	glDrawBuffers(2, buffers);	// draw to bright tex and colour tex
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex || !bufferBrightTex[0] || !bufferColourTex) return;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 	bloomEnabled = false;
 	blurEnabled = false;
@@ -189,15 +196,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
-	
-
-
-	shadowSceneShader = new Shader("ShadowSceneVert.glsl", "ShadowSceneFrag.glsl");	// SHADOWS
-	shadowShader = new Shader("ShadowVert.glsl", "ShadowFrag.glsl");
-	simpleLitShader = new Shader("PerPixelVertex.glsl", "PerPixelFragment.glsl");
-	sunShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");
-	if (!shadowSceneShader->LoadSuccess() || !shadowShader->LoadSuccess() || !simpleLitShader->LoadSuccess() || !sunShader->LoadSuccess()) return;
-
+	// Shadows
 	glGenTextures(1, &shadowTex);
 	glBindTexture(GL_TEXTURE_2D, shadowTex);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -216,44 +215,37 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	
 
-
 	// Point lights for glowing orbs
 	pointLights[0] = new Light(heightmapSize * Vector3(0.25f, 0.025f, 0.25f), Vector4(1, 1, 0, 1), heightmapSize.x / 2);
 	pointLights[1] = new Light(heightmapSize * Vector3(1.75f, 0.025f, 1.75f), Vector4(0, 1, 1, 1), heightmapSize.x / 2);
 
 	// Glowing orbs
-	//solidRed = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/solid_red2.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	floatingGlowingOrb = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
 	floatingGlowingOrb->SetTransform(Matrix4::Translation(Vector3(0.25f, 3.0f, 0.25f) * heightmapSize));
 	floatingGlowingOrb->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
-	//floatingGlowingOrb->SetTexture(solidRed);
 	floatingGlowingOrb->SetColour(Vector4(1, 1, 0, 1));
 	terrain->AddChild(floatingGlowingOrb);
 
 	floatingGlowingOrb2 = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
 	floatingGlowingOrb2->SetTransform(Matrix4::Translation(Vector3(1.75f, 3.0f, 1.75f) * heightmapSize));
 	floatingGlowingOrb2->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
-	//floatingGlowingOrb2->SetTexture(solidRed);
 	floatingGlowingOrb2->SetColour(Vector4(0, 1, 1, 1));
 	terrain->AddChild(floatingGlowingOrb2);
 
-
-	sceneTime = 0.0f;
 
 
 	// sun orbiting around centre of terrain
 	orbitSun = Mesh::LoadFromMeshFile("Sphere.msh");
 	sunTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/2k_sun.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	SetTextureRepeating(sunTex, true);
+	SetTextureRepeating(sunTex, true);	// for planets, use other 2k textures from https://www.solarsystemscope.com/textures/ and use simpleLitShader
 
-	// for planets, use other 2k textures from https://www.solarsystemscope.com/textures/ and use simpleLitShader
-	
 	Vector3 terrainCentrePos = Vector3(heightmapSize.x / 2, 0.0f, heightmapSize.z / 2) * terrain->GetModelScale().x;
 	terrainCentreNode = new SceneNode();
 	terrainCentreNode->SetTransform(Matrix4::Translation(terrainCentrePos));
 	root->AddChild(terrainCentreNode);
 
 	Vector3 sunRelativePosition = Vector3(12000.0f, 0.0f, 0.0f);
+	orbit = new Orbit(0.0f, terrainCentrePos, sunRelativePosition + terrainCentrePos, 0.25f);
 	orbitSunNode = new SceneNode(orbitSun);
 	orbitSunNode->SetTransform(Matrix4::Translation(sunRelativePosition));
 	orbitSunNode->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
@@ -261,44 +253,56 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	orbitSunNode->SetColour(Vector4(1, 1, 0, 1));
 	terrainCentreNode->AddChild(orbitSunNode);
 
-	orbit = new Orbit(0.0f, terrainCentrePos, sunRelativePosition + terrainCentrePos, 0.05f);
-
+	sceneTime = 0.0f;
 	init = true;
 }
 
-Renderer::~Renderer(void) {	// need to check deletes
-	delete camera;
-	delete heightMap;
-	delete quad;
+Renderer::~Renderer(void) {
 	delete reflectShader;
 	delete skyboxShader;
-	delete light;
-	delete root;
-
-	delete npc;
-	//delete npcNode;
-	//delete terrain
 	delete npcShader;
-	delete anim;
-	delete npcMat;
-
-	delete shipMesh;
-	//delete shipMat;
-
 	delete processShader;
 	delete processSceneShader;
-	delete processQuad;
-	glDeleteTextures(2, bufferBrightTex);
-	glDeleteTextures(1, &bufferDepthTex);
-	glDeleteFramebuffers(1, &bufferFBO);
-	glDeleteFramebuffers(1, &processFBO);
-
-
-	glDeleteTextures(1, &shadowTex);
-	glDeleteFramebuffers(1, &shadowFBO);
-
 	delete shadowSceneShader;
 	delete shadowShader;
+	delete simpleLitShader;
+	delete sunShader;
+	delete bloomShader;
+
+	delete heightMap;
+	delete light;
+	delete pointLights[0];
+	delete pointLights[1];
+	delete camera;
+	delete orbit;
+
+	delete quad;
+	delete processQuad;
+	delete orbitSun;
+	delete npc;
+	delete anim;
+	delete npcMat;
+	delete shipMesh;
+	delete shipMat;
+
+	delete root;
+
+	glDeleteTextures(2, bufferBrightTex);
+	glDeleteTextures(1, &bufferDepthTex);
+	glDeleteTextures(1, &bufferColourTex);
+	glDeleteTextures(1, &shadowTex);
+	glDeleteTextures(1, &sunTex);
+
+	glDeleteTextures(1, &cubeMap);
+	glDeleteTextures(1, &waterTex);
+	glDeleteTextures(1, &earthTex);
+	glDeleteTextures(1, &earthBump);
+	glDeleteTextures(1, &shipTexture);
+	glDeleteTextures(1, &nodeTex);
+
+	glDeleteFramebuffers(1, &bufferFBO);
+	glDeleteFramebuffers(1, &processFBO);
+	glDeleteFramebuffers(1, &shadowFBO);
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -334,9 +338,6 @@ void Renderer::UpdateScene(float dt) {
 		nvEnabled = !nvEnabled;
 	}
 
-
-	sceneTime += dt;
-
 	if (!camAutoHasStarted) {	// start automatic camera movement
 		camera->TriggerAuto();
 		camAutoHasStarted = true;
@@ -344,9 +345,7 @@ void Renderer::UpdateScene(float dt) {
 
 	ApplyFloatingMovement(root, 1);
 
-
-	// ORBITING LIGHT MANAGEMENT
-	Vector3 orbitPos = orbit->CalculateRelativePosition();
+	Vector3 orbitPos = orbit->CalculateRelativePosition();	// manage orbiting sun
 	orbitSunNode->SetTransform(Matrix4::Translation(orbitPos));
 	light->SetPosition(orbitPos + terrainCentreNode->GetTransform().GetPositionVector());	// light position = sun local pos + terrain centre global pos
 
@@ -354,9 +353,8 @@ void Renderer::UpdateScene(float dt) {
 	else light->SetRadius(light->GetInitialRadius());	
 
 
+	sceneTime += dt;
 	root->Update(dt);
-
-	//std::cout << 1 / dt << "\n";	// outputs fps
 }
 
 int Renderer::ApplyFloatingMovement(SceneNode* n, int count) {
@@ -395,11 +393,6 @@ void Renderer::RenderScene() {
 		DrawWater();
 	}
 }
-
-
-
-
-
 
 void Renderer::DrawSkybox() {
 	glDepthMask(GL_FALSE);
@@ -476,9 +469,6 @@ void Renderer::DrawNode(SceneNode* n) {
 		}
 		else if (n == terrain)
 		{
-			//FADE LIGHT COLOUR TO RED OVER TIME
-			//light->SetColour(Vector4(light->GetColour().x, light->GetColour().y - 0.0001, light->GetColour().z - 0.0001, light->GetColour().w));
-
 			BindShader(shadowSceneShader);
 			SetShaderLight(*light);
 			
@@ -521,8 +511,7 @@ void Renderer::DrawNode(SceneNode* n) {
 
 			glUniform3fv(glGetUniformLocation(sunShader->GetProgram(), "cameraPos"), 1, (float*)&camera->GetPosition());
 
-			//nodeTex = n->GetTexture();
-			glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "useTexture"), 0);	// SETS TO 0 - USE COLOUR NOT TEXTURE
+			glUniform1i(glGetUniformLocation(sunShader->GetProgram(), "useTexture"), 0);	// sets to 0 - use colour not texture
 
 			n->Draw(*this); 
 		}
@@ -581,15 +570,7 @@ bool Renderer::SetTexture(GLuint texID, GLuint unit, const std::string& uniformN
 	return true;
 }
 
-
-
-
 void Renderer::DrawPostProcess() {
-
-	/*if (!bloomEnabled && !blurEnabled) {
-		return;
-	}*/
-	
 	glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
 	modelMatrix.ToIdentity();
 	viewMatrix.ToIdentity();
@@ -662,9 +643,6 @@ void Renderer::PresentScene() {
 	processQuad->Draw();
 }
 
-
-
-
 void Renderer::DrawShadowScene() {
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
 
@@ -691,7 +669,6 @@ void Renderer::DrawShadowScene() {
 	viewMatrix = camera->BuildViewMatrix();	// RESET VIEW AND PROJ MATRIX
 	projMatrix = Matrix4::Perspective(1.0f, 25000.0f, (float)width / (float)height, 45.0f);
 }
-
 
 void Renderer::DrawNodeShadows(SceneNode* n) {
 	if (n != terrain && n != orbitSunNode) {	// dont draw shadows for these

@@ -20,94 +20,74 @@ protected:
 	void DrawHeightmap();
 	void DrawWater();
 	void DrawSkybox();
+	void DrawNode(SceneNode* n);
+	bool SetTexture(GLuint texID, GLuint unit, const std::string& uniformName, Shader* s, GLenum target);
+	void PresentScene();
+	void DrawPostProcess();
+	void DrawShadowScene();
+	void DrawNodeShadows(SceneNode* n);
+	int ApplyFloatingMovement(SceneNode* n, int count);
 
 	Shader* reflectShader;
 	Shader* skyboxShader;
+	Shader* npcShader;
+	Shader* processShader;
+	Shader* processSceneShader;
+	Shader* shadowSceneShader;
+	Shader* shadowShader;
+	Shader* simpleLitShader;
+	Shader* sunShader;
+	Shader* bloomShader;
 
 	HeightMap* heightMap;
-	Mesh* quad;
-
+	Vector3 heightmapSize;
 	Light* light;
+	Light* pointLights[2];
 	Camera* camera;
+	Orbit* orbit;
+
+	Mesh* quad;
+	Mesh* processQuad;
+	Mesh* orbitSun;
+	Mesh* npc;
+	MeshAnimation* anim;
+	MeshMaterial* npcMat;
+	vector<GLuint> npcMatTextures;
+	Mesh* shipMesh;
+	MeshMaterial* shipMat;
+	vector<GLuint> shipMatTextures;
 
 	GLuint cubeMap;
 	GLuint waterTex;
 	GLuint earthTex;
 	GLuint earthBump;
-
-	float waterRotate;
-	float waterCycle;
-
-	void DrawNode(SceneNode* n);
-
-	SceneNode* root;
-	SceneNode* terrain;
-
-	bool SetTexture(GLuint texID, GLuint unit, const std::string& uniformName, Shader* s, GLenum target);
-
-	SceneNode* npcNode;
-	Mesh* npc;
-	Shader* npcShader;
-	MeshAnimation* anim;
-	MeshMaterial* npcMat;
-	vector<GLuint> npcMatTextures;
-	int currentFrame;
-	float frameTime;
+	GLuint shipTexture;
 	GLuint nodeTex;
-
-	Mesh* shipMesh;
-	GLuint shipTexture;	
-	MeshMaterial* shipMat;
-	vector<GLuint> shipMatTextures;
-
-
-	void PresentScene();
-	void DrawPostProcess();
-
-	Mesh* processQuad;
-	Shader* processShader;
-	Shader* processSceneShader; 
 	GLuint bufferFBO;
 	GLuint processFBO;
 	GLuint bufferBrightTex[2];
 	GLuint bufferDepthTex;
-
 	GLuint bufferColourTex;
+	GLuint shadowTex;
+	GLuint shadowFBO;
+	GLuint sunTex;
+
+	float waterRotate;
+	float waterCycle;
+	int currentFrame;
+	float frameTime;
+	float sceneTime;
+
+	bool camAutoHasStarted;
 	bool bloomEnabled;
 	bool blurEnabled;
 	bool nvEnabled;
-	Shader* bloomShader;
 
-
-	void DrawShadowScene();
-
-	GLuint shadowTex;
-	GLuint shadowFBO;
-	float sceneTime;
-	Shader* shadowSceneShader;
-	Shader* shadowShader;
-
-	Vector3 heightmapSize;
-
-	Shader* simpleLitShader;
-	Shader* sunShader;
-
-	Orbit* orbit;
-	Mesh* orbitSun;
+	SceneNode* root;
+	SceneNode* terrain;
+	SceneNode* npcNode;
 	SceneNode* terrainCentreNode;
 	SceneNode* orbitSunNode;
-	GLuint sunTex;
-
-	void DrawNodeShadows(SceneNode* n);
-
-	int ApplyFloatingMovement(SceneNode* n, int count);
-
-	bool camAutoHasStarted;
-
-	//GLuint solidRed;
-
 	SceneNode* floatingGlowingOrb;
 	SceneNode* floatingGlowingOrb2;
-
-	Light* pointLights[2];
 };

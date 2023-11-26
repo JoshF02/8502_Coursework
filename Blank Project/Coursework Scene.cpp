@@ -4,13 +4,13 @@
 #include "../nclgl/OGLRenderer.h"
 
 int main()	{
-	Window w("Coursework Scene", 1920, 1080, false);	// bool sets fullscreen
+	Window w("Coursework Scene", 1920, 1080, false);
 
 	if(!w.HasInitialised()) {
 		return -1;
 	}
 	
-	OGLRenderer* renderer = new Renderer(w);	// careful with performance - renderer created on heap not stack
+	OGLRenderer* renderer = new Renderer(w);
 	if(!(*renderer).HasInitialised()) {
 		return -1;
 	}

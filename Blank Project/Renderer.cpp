@@ -7,7 +7,7 @@
 #include "../nclgl/MeshMaterial.h"
 #include "../nclgl/MeshAnimation.h"
 
-const int POST_PASSES = 100;	// more passes = stronger blur
+const int POST_PASSES = 10;	// more passes = stronger blur
 #define SHADOWSIZE 2048
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
@@ -67,7 +67,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	camAutoHasStarted = false;
 	projMatrix = Matrix4::Perspective(1.0f, 25000.0f, (float)width / (float)height, 45.0f);
 
-	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 4);	// POINT LIGHT
+	light = new Light(heightmapSize * Vector3(0.5f, 30.5f, 0.5f), Vector4(1, 1, 1, 1), heightmapSize.x * 4);
 	light->SetInitialRadius();
 
 
@@ -125,7 +125,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	for (int i = 1; i < 4; ++i)
 	{
-		SceneNode* s = new SceneNode(shipMesh, Vector4(1,1,1,1), false);	// mesh is complex
+		SceneNode* s = new SceneNode(shipMesh, Vector4(1,1,1,1), false);
 		s->SetTransform(Matrix4::Translation(heightmapSize * 2 * Vector3((0.62f / i) + 0.14f , 2.0f + (0.02f * i), (0.18f * i) + 0.15f)) *
 		Matrix4::Rotation(30.0f * i * i, Vector3(0, 1, 0)));
 		s->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
@@ -334,7 +334,7 @@ void Renderer::UpdateScene(float dt) {
 		blurEnabled = false;
 	}
 
-	if (Window::GetKeyboard()->KeyTriggered(KEYBOARD_U)) {
+	if (Window::GetKeyboard()->KeyTriggered(KEYBOARD_N)) {
 		nvEnabled = !nvEnabled;
 	}
 

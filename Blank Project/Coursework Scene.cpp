@@ -4,7 +4,7 @@
 #include "../nclgl/OGLRenderer.h"
 
 int main()	{
-	Window w("Coursework Scene", 1920, 1080, false);
+	Window w("Coursework Scene", 1920, 1080, true);
 
 	if(!w.HasInitialised()) {
 		return -1;

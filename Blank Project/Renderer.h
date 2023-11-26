@@ -75,6 +75,7 @@ protected:
 	GLuint bufferColourTex;
 	bool bloomEnabled;
 	bool blurEnabled;
+	bool nvEnabled;
 	Shader* bloomShader;
 
 

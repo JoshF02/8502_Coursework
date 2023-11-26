@@ -26,6 +26,10 @@ void main(void){
 	mat3 TBN = mat3(normalize(IN.tangent), normalize(IN.binormal), normalize(IN.normal));
 
 	vec4 diffuse = texture(diffuseTex, IN.texCoord);
+
+	//float gamma = 2.2;
+	//diffuse.rgb = pow(diffuse.rgb, vec3(gamma));
+
 	vec3 normal = texture(bumpTex, IN.texCoord).rgb;
 	normal = normalize(TBN * normalize(normal * 2.0 - 1.0));
 

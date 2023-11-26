@@ -94,12 +94,13 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
+	// REMEMBER TO CHANGE BACK TO SHIP MESH, CHANGE ISCOMPLEX TO TRUE
 
-	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");	// STATIC MESHES
-	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");	// change to w/interior for submission, but loads slow
-	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"brick.tga", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
+	shipMesh = Mesh::LoadFromMeshFile("/Coursework/cliff.msh");	// STATIC MESHES
+	shipMat = new MeshMaterial("/Coursework/Rock.mat");	// change to w/interior for submission, but loads slow
+	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/muddy+terrain.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
-	for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
+	/*for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
 	{
 		const MeshMaterialEntry* matEntry = shipMat->GetMaterialForLayer(i);
 
@@ -109,11 +110,11 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		GLuint texID = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO,
 			SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
 		shipMatTextures.emplace_back(texID);
-	}
+	}*/
 
 	for (int i = 1; i < 4; ++i)
 	{
-		SceneNode* s = new SceneNode(shipMesh, Vector4(1,1,1,1), true);	// mesh is complex
+		SceneNode* s = new SceneNode(shipMesh, Vector4(1,1,1,1), false);	// mesh is complex
 		s->SetTransform(Matrix4::Translation(heightmapSize * 2 * Vector3((0.62f / i) + 0.14f , 2.0f + (0.02f * i), (0.18f * i) + 0.15f)) *
 		Matrix4::Rotation(30.0f * i * i, Vector3(0, 1, 0)));
 		s->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
@@ -184,6 +185,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	bloomEnabled = false;
 	blurEnabled = false;
+	nvEnabled = false;
 
 
 
@@ -313,6 +315,10 @@ void Renderer::UpdateScene(float dt) {
 		blurEnabled = false;
 	}
 
+	if (Window::GetKeyboard()->KeyTriggered(KEYBOARD_U)) {
+		nvEnabled = !nvEnabled;
+	}
+
 
 	sceneTime += dt;
 
@@ -354,7 +360,7 @@ int Renderer::ApplyFloatingMovement(SceneNode* n, int count) {
 }
 
 void Renderer::RenderScene() {
-	if (bloomEnabled || blurEnabled) {
+	if (bloomEnabled || blurEnabled || nvEnabled) {
 		DrawShadowScene();
 		glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
@@ -555,6 +561,10 @@ bool Renderer::SetTexture(GLuint texID, GLuint unit, const std::string& uniformN
 
 
 void Renderer::DrawPostProcess() {
+
+	/*if (!bloomEnabled && !blurEnabled) {
+		return;
+	}*/
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
 	modelMatrix.ToIdentity();
@@ -590,17 +600,19 @@ void Renderer::DrawPostProcess() {
 		processQuad->Draw();
 	}
 
-	for (int i = 0; i < POST_PASSES; ++i) {
+	if (bloomEnabled || blurEnabled) {
+		for (int i = 0; i < POST_PASSES; ++i) {
 
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
-		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
-		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[0]);
-		processQuad->Draw();
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[1], 0);
+			glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
+			glBindTexture(GL_TEXTURE_2D, bufferBrightTex[0]);
+			processQuad->Draw();
 
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
-		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
-		glBindTexture(GL_TEXTURE_2D, bufferBrightTex[1]);
-		processQuad->Draw();
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferBrightTex[0], 0);
+			glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
+			glBindTexture(GL_TEXTURE_2D, bufferBrightTex[1]);
+			processQuad->Draw();
+		}
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -621,6 +633,7 @@ void Renderer::PresentScene() {
 	SetTexture(bufferColourTex, 1, "differentTex", processSceneShader, GL_TEXTURE_2D);
 
 	glUniform1i(glGetUniformLocation(processSceneShader->GetProgram(), "bloomEnabled"), bloomEnabled);
+	glUniform1i(glGetUniformLocation(processSceneShader->GetProgram(), "nvEnabled"), nvEnabled);
 
 	processQuad->Draw();
 }

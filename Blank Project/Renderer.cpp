@@ -14,12 +14,12 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// Shaders
 	reflectShader = new Shader("ReflectVertex.glsl", "/Coursework/CWReflectFragment.glsl");
-	skyboxShader = new Shader("SkyboxVertex.glsl", "/Coursework/CWSkyboxFragment.glsl");
+	skyboxShader = new Shader("SkyboxVertex.glsl", "SkyboxFragment.glsl");
 	npcShader = new Shader("/Coursework/CWLitSkinningVertex.glsl", "PerPixelFragment.glsl");
 	processShader = new Shader("TexturedVertex.glsl", "ProcessFrag.glsl");
 	processSceneShader = new Shader("TexturedVertex.glsl", "/Coursework/CWProcessSceneFrag.glsl");
 	bloomShader = new Shader("TexturedVertex.glsl", "/Coursework/CWBloomFrag.glsl");
-	shadowSceneShader = new Shader("ShadowSceneVert.glsl", "ShadowSceneFrag.glsl");
+	shadowSceneShader = new Shader("ShadowSceneVert.glsl", "/Coursework/CWShadowSceneFrag.glsl");
 	shadowShader = new Shader("ShadowVert.glsl", "ShadowFrag.glsl");
 	simpleLitShader = new Shader("PerPixelVertex.glsl", "PerPixelFragment.glsl");
 	sunShader = new Shader("SceneVertex.glsl", "SceneFragment.glsl");

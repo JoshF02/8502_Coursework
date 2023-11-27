@@ -143,16 +143,16 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// Cliffs Around Edges
 	cliff = Mesh::LoadFromMeshFile("/Coursework/cliff.msh");
-	for (int i = 0; i < 8; ++i) {
+	for (int i = 0; i < 6; ++i) {
 		SceneNode* c1 = new SceneNode(cliff, Vector4(1, 1, 1, 1));
-		c1->SetTransform(Matrix4::Translation(Vector3(1000 + (2000 * i), 100, 0)));
+		c1->SetTransform(Matrix4::Translation(Vector3(1000 + (2700 * i), 100, 0)));
 		c1->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
 		c1->SetBoundingRadius(50.0f);
 		c1->SetTexture(rockTex);
 		root->AddChild(c1);
 
 		SceneNode* c2 = new SceneNode(cliff, Vector4(1, 1, 1, 1));
-		c2->SetTransform(Matrix4::Translation(Vector3(1000 + (2000 * i), 100, heightmapSize.x * terrain->GetModelScale().x)) *
+		c2->SetTransform(Matrix4::Translation(Vector3(1000 + (2700 * i), 100, heightmapSize.x * terrain->GetModelScale().x)) *
 			Matrix4::Rotation(180.0f, Vector3(0, 1, 0)));
 		c2->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
 		c2->SetBoundingRadius(50.0f);
@@ -160,7 +160,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		root->AddChild(c2);
 
 		SceneNode* c3 = new SceneNode(cliff, Vector4(1, 1, 1, 1));
-		c3->SetTransform(Matrix4::Translation(Vector3(0, 100, 1000 + (2000 * i))) *
+		c3->SetTransform(Matrix4::Translation(Vector3(0, 100, 1000 + (2700 * i))) *
 			Matrix4::Rotation(90.0f, Vector3(0, 1, 0)));
 		c3->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
 		c3->SetBoundingRadius(50.0f);
@@ -168,7 +168,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		root->AddChild(c3);
 
 		SceneNode* c4 = new SceneNode(cliff, Vector4(1, 1, 1, 1));
-		c4->SetTransform(Matrix4::Translation(Vector3(heightmapSize.x * terrain->GetModelScale().x, 100, 1000 + (2000 * i))) *
+		c4->SetTransform(Matrix4::Translation(Vector3(heightmapSize.x * terrain->GetModelScale().x, 100, 1000 + (2700 * i))) *
 			Matrix4::Rotation(270.0f, Vector3(0, 1, 0)));
 		c4->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
 		c4->SetBoundingRadius(50.0f);
@@ -180,7 +180,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	// Ship Meshes
 	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");
-	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");	// change to w/interior for submission, but loads slow
+	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");
 	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/muddy+terrain.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
 	for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
@@ -292,15 +292,15 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	pointLights[1] = new Light(heightmapSize * Vector3(1.55f, 0.025f, 1.55f), Vector4(0, 1, 1, 1), heightmapSize.x / 2);
 
 	// Glowing orbs
-	floatingGlowingOrb = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
+	floatingGlowingOrb = new SceneNode(Mesh::LoadFromMeshFile("/Coursework/rock2.msh"));
 	floatingGlowingOrb->SetTransform(Matrix4::Translation(Vector3(0.45f, 3.0f, 0.45f) * heightmapSize));
 	floatingGlowingOrb->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
 	floatingGlowingOrb->SetColour(Vector4(1, 1, 0, 1));
 	terrain->AddChild(floatingGlowingOrb);
 
-	floatingGlowingOrb2 = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
+	floatingGlowingOrb2 = new SceneNode(Mesh::LoadFromMeshFile("/Coursework/rock1.msh"));
 	floatingGlowingOrb2->SetTransform(Matrix4::Translation(Vector3(1.55f, 3.0f, 1.55f) * heightmapSize));
-	floatingGlowingOrb2->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
+	floatingGlowingOrb2->SetModelScale(Vector3(450.0f, 450.0f, 450.0f));
 	floatingGlowingOrb2->SetColour(Vector4(0, 1, 1, 1));
 	terrain->AddChild(floatingGlowingOrb2);
 
@@ -309,7 +309,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	// sun orbiting around centre of terrain
 	orbitSun = Mesh::LoadFromMeshFile("Sphere.msh");
 	sunTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/2k_sun.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
-	SetTextureRepeating(sunTex, true);	// for planets, use other 2k textures from https://www.solarsystemscope.com/textures/ and use simpleLitShader
+	SetTextureRepeating(sunTex, true);
 
 	Vector3 terrainCentrePos = Vector3(heightmapSize.x / 2, 0.0f, heightmapSize.z / 2) * terrain->GetModelScale().x;
 	terrainCentreNode = new SceneNode();

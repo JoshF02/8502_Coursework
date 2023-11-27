@@ -103,15 +103,87 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 
 
+	// Rocks
+	rock1 = Mesh::LoadFromMeshFile("/Coursework/rock1.msh");
+	rock2 = Mesh::LoadFromMeshFile("/Coursework/rock2.msh");
+	rock3 = Mesh::LoadFromMeshFile("/Coursework/rock3.msh");
+	rock4 = Mesh::LoadFromMeshFile("/Coursework/rock4.msh");
+	rockTex = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/muddy+terrain.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
-	// REMEMBER TO CHANGE BACK TO SHIP MESH, CHANGE ISCOMPLEX TO TRUE
+	for (int i = 0; i < 8; ++i)
+	{
+		int whichRock = rand() % 4;
+		Mesh* rockToUse = new Mesh();
+
+		switch (whichRock) {
+		case 0:
+			rockToUse = rock1;
+			break;
+		case 1:
+			rockToUse = rock2;
+			break;
+		case 2:
+			rockToUse = rock3;
+			break;
+		case 3:
+			rockToUse = rock4;
+			break;
+		}
+
+		SceneNode* s = new SceneNode(rockToUse, Vector4(1, 1, 1, 1));
+		s->SetTransform(Matrix4::Translation(Vector3(rand() % ((int)heightmapSize.x * 2), 500.0f, rand() % ((int)heightmapSize.x * 2))) *
+			Matrix4::Rotation(30.0f * i * i, Vector3(0, 1, 0)));
+		s->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
+		s->SetBoundingRadius(50.0f);
+		s->SetTexture(rockTex);
+		root->AddChild(s);
+	}
+
+
+
+	// Cliffs Around Edges
+	cliff = Mesh::LoadFromMeshFile("/Coursework/cliff.msh");
+	for (int i = 0; i < 8; ++i) {
+		SceneNode* c1 = new SceneNode(cliff, Vector4(1, 1, 1, 1));
+		c1->SetTransform(Matrix4::Translation(Vector3(1000 + (2000 * i), 100, 0)));
+		c1->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
+		c1->SetBoundingRadius(50.0f);
+		c1->SetTexture(rockTex);
+		root->AddChild(c1);
+
+		SceneNode* c2 = new SceneNode(cliff, Vector4(1, 1, 1, 1));
+		c2->SetTransform(Matrix4::Translation(Vector3(1000 + (2000 * i), 100, heightmapSize.x * terrain->GetModelScale().x)) *
+			Matrix4::Rotation(180.0f, Vector3(0, 1, 0)));
+		c2->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
+		c2->SetBoundingRadius(50.0f);
+		c2->SetTexture(rockTex);
+		root->AddChild(c2);
+
+		SceneNode* c3 = new SceneNode(cliff, Vector4(1, 1, 1, 1));
+		c3->SetTransform(Matrix4::Translation(Vector3(0, 100, 1000 + (2000 * i))) *
+			Matrix4::Rotation(90.0f, Vector3(0, 1, 0)));
+		c3->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
+		c3->SetBoundingRadius(50.0f);
+		c3->SetTexture(rockTex);
+		root->AddChild(c3);
+
+		SceneNode* c4 = new SceneNode(cliff, Vector4(1, 1, 1, 1));
+		c4->SetTransform(Matrix4::Translation(Vector3(heightmapSize.x * terrain->GetModelScale().x, 100, 1000 + (2000 * i))) *
+			Matrix4::Rotation(270.0f, Vector3(0, 1, 0)));
+		c4->SetModelScale(Vector3(500.0f, 500.0f, 500.0f));
+		c4->SetBoundingRadius(50.0f);
+		c4->SetTexture(rockTex);
+		root->AddChild(c4);
+	}
+
+
 
 	// Ship Meshes
-	shipMesh = Mesh::LoadFromMeshFile("/Coursework/cliff.msh");
-	shipMat = new MeshMaterial("/Coursework/Rock.mat");	// change to w/interior for submission, but loads slow
+	shipMesh = Mesh::LoadFromMeshFile("/Coursework/Example1NoInterior_Grey.msh");
+	shipMat = new MeshMaterial("/Coursework/Example1NoInterior_Grey.mat");	// change to w/interior for submission, but loads slow
 	shipTexture = SOIL_load_OGL_texture(TEXTUREDIR"/Coursework/muddy+terrain.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, 0);
 
-	/*for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
+	for (int i = 0; i < shipMesh->GetSubMeshCount(); ++i)
 	{
 		const MeshMaterialEntry* matEntry = shipMat->GetMaterialForLayer(i);
 
@@ -121,11 +193,11 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		GLuint texID = SOIL_load_OGL_texture(path.c_str(), SOIL_LOAD_AUTO,
 			SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
 		shipMatTextures.emplace_back(texID);
-	}*/
+	}
 
 	for (int i = 1; i < 4; ++i)
 	{
-		SceneNode* s = new SceneNode(shipMesh, Vector4(1,1,1,1), false);
+		SceneNode* s = new SceneNode(shipMesh, Vector4(1,1,1,1), true);
 		s->SetTransform(Matrix4::Translation(heightmapSize * 2 * Vector3((0.62f / i) + 0.14f , 2.0f + (0.02f * i), (0.18f * i) + 0.15f)) *
 		Matrix4::Rotation(30.0f * i * i, Vector3(0, 1, 0)));
 		s->SetModelScale(Vector3(100.0f, 100.0f, 100.0f));
@@ -216,18 +288,18 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	
 
 	// Point lights for glowing orbs
-	pointLights[0] = new Light(heightmapSize * Vector3(0.25f, 0.025f, 0.25f), Vector4(1, 1, 0, 1), heightmapSize.x / 2);
-	pointLights[1] = new Light(heightmapSize * Vector3(1.75f, 0.025f, 1.75f), Vector4(0, 1, 1, 1), heightmapSize.x / 2);
+	pointLights[0] = new Light(heightmapSize * Vector3(0.45f, 0.025f, 0.45f), Vector4(1, 1, 0, 1), heightmapSize.x / 2);
+	pointLights[1] = new Light(heightmapSize * Vector3(1.55f, 0.025f, 1.55f), Vector4(0, 1, 1, 1), heightmapSize.x / 2);
 
 	// Glowing orbs
 	floatingGlowingOrb = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
-	floatingGlowingOrb->SetTransform(Matrix4::Translation(Vector3(0.25f, 3.0f, 0.25f) * heightmapSize));
+	floatingGlowingOrb->SetTransform(Matrix4::Translation(Vector3(0.45f, 3.0f, 0.45f) * heightmapSize));
 	floatingGlowingOrb->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
 	floatingGlowingOrb->SetColour(Vector4(1, 1, 0, 1));
 	terrain->AddChild(floatingGlowingOrb);
 
 	floatingGlowingOrb2 = new SceneNode(Mesh::LoadFromMeshFile("Sphere.msh"));
-	floatingGlowingOrb2->SetTransform(Matrix4::Translation(Vector3(1.75f, 3.0f, 1.75f) * heightmapSize));
+	floatingGlowingOrb2->SetTransform(Matrix4::Translation(Vector3(1.55f, 3.0f, 1.55f) * heightmapSize));
 	floatingGlowingOrb2->SetModelScale(Vector3(250.0f, 250.0f, 250.0f));
 	floatingGlowingOrb2->SetColour(Vector4(0, 1, 1, 1));
 	terrain->AddChild(floatingGlowingOrb2);

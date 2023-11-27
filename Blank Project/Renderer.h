@@ -50,6 +50,11 @@ protected:
 	Mesh* processQuad;
 	Mesh* orbitSun;
 	Mesh* npc;
+	Mesh* rock1;
+	Mesh* rock2;
+	Mesh* rock3;
+	Mesh* rock4;
+	Mesh* cliff;
 	MeshAnimation* anim;
 	MeshMaterial* npcMat;
 	vector<GLuint> npcMatTextures;
@@ -71,6 +76,7 @@ protected:
 	GLuint shadowTex;
 	GLuint shadowFBO;
 	GLuint sunTex;
+	GLuint rockTex;
 
 	float waterRotate;
 	float waterCycle;
